@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, Fraunces } from "next/font/google";
+import { DemoSessionProvider } from "@/lib/demo-session";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -28,7 +29,7 @@ export default function RootLayout({
       className={`${fraunces.variable} ${dmSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-parchment text-ink">
-        {children}
+        <DemoSessionProvider>{children}</DemoSessionProvider>
       </body>
     </html>
   );

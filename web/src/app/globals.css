@@ -32,6 +32,10 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+}
+
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
