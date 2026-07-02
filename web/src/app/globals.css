@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #111114;
+  --parchment: #faf6ee;
+  --brass: #c6a15b;
+  --civic-navy: #1e2a45;
+  --success: #2f7a4e;
+  --warning: #c97a2b;
+  --danger: #b23b3b;
+  --background: var(--parchment);
+  --foreground: var(--ink);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-ink: var(--ink);
+  --color-parchment: var(--parchment);
+  --color-brass: var(--brass);
+  --color-civic-navy: var(--civic-navy);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-dm-sans);
+  --font-display: var(--font-fraunces);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

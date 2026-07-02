@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+web/node_modules/
+web/.next/
+.next/
+out/
+dist/
+build/
+
+# Environment
+.env
+.env.*
+!.env.example
+!web/.env.example
+
+# Supabase
+supabase/.branches
+supabase/.temp
+
+# Flutter (Phase 2)
+flutter/.dart_tool/
+flutter/build/
+flutter/.flutter-plugins-dependencies
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
