@@ -19,7 +19,7 @@ export function Th({
   className,
   align = "left",
 }: {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   className?: string;
   align?: "left" | "right" | "center";
 }) {
@@ -42,14 +42,17 @@ export function Td({
   className,
   align = "left",
   highlight,
+  colSpan,
 }: {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   className?: string;
   align?: "left" | "right" | "center";
   highlight?: boolean;
+  colSpan?: number;
 }) {
   return (
     <td
+      colSpan={colSpan}
       className={cn(
         "px-4 py-3 text-ink/85",
         align === "right" && "text-right tabular-nums",

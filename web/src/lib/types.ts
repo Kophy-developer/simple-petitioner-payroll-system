@@ -1,19 +1,40 @@
-export type UserRole = "circulator" | "admin" | "super_admin";
+export type UserRole =
+  | "super_admin"
+  | "account_admin"
+  | "team_lead"
+  | "petitioner"
+  | "canvasser"
+  | "validator";
+
+export type PayModel = "validity_standard" | "per_valid_sig";
+export type WageCurrency = "USD" | "PHP";
+export type UserStatus = "active" | "inactive";
+export type TurnInStatus = "pending" | "approved" | "rejected";
+export type LoanStatus = "pending" | "approved" | "rejected" | "auto_rejected";
+export type ExpenseType =
+  | "upfront_draw"
+  | "chargeback"
+  | "hotel_travel"
+  | "health"
+  | "car_rental"
+  | "housing"
+  | "other";
+export type PayrollRecordStatus = "draft" | "locked";
+export type ExpenseConfigType = "standard" | "per_issue";
 
 export type DemoUser = {
   id: string;
   email: string;
-  name: string;
-  role: UserRole;
-  circulatorId?: string;
-};
-
-export type Circulator = {
-  id: string;
   firstName: string;
   lastName: string;
   initials: string;
-  status: "active" | "inactive";
+  role: UserRole;
+  status: UserStatus;
+  profileTags: string[];
+  roleCategoryIds: string[];
+  wageCurrency?: WageCurrency;
+  hourlyWage?: number;
+  teamMemberIds?: string[];
 };
 
 export type Petition = {
@@ -28,16 +49,18 @@ export type Issue = {
   id: string;
   issueNumber: string;
   name: string;
+  petitionId: string;
   petitionCode: string;
   state: string;
   validatedBy: string;
   turnInDate: string;
   turnInNumber: string;
+  payModel: PayModel;
 };
 
 export type Submission = {
   id: string;
-  circulatorId: string;
+  userId: string;
   issueId: string;
   rawSignatures: number;
   pageNumbers: number;
@@ -45,9 +68,32 @@ export type Submission = {
   pooledPages: number;
 };
 
+export type TurnInUpload = {
+  id: string;
+  userId: string;
+  fileName: string;
+  issueIds: string[];
+  turnInDate: string;
+  turnInNumber: string;
+  notes: string;
+  status: TurnInStatus;
+  reviewNotes?: string;
+  submittedAt: string;
+};
+
+export type ValidityRecord = {
+  id: string;
+  issueId: string;
+  userId: string;
+  dups: number;
+  usable: number;
+  valid: number;
+  validityPercent: number;
+};
+
 export type LedgerRow = {
   id: string;
-  circulatorId: string;
+  userId: string;
   issueId: string;
   sigs: number;
   pay: number;
@@ -61,13 +107,15 @@ export type LedgerRow = {
   totalPay: number | null;
   upfront: number | null;
   hold: number | null;
+  payModel: PayModel;
   validityPending: boolean;
 };
 
 export type Expense = {
   id: string;
-  circulatorId: string;
-  type: "draw" | "chargeback" | "hotel_travel" | "other";
+  userId: string;
+  issueId: string | null;
+  type: ExpenseType;
   amount: number;
   date: string;
   receiptName: string;
@@ -75,14 +123,65 @@ export type Expense = {
 
 export type LoanRequest = {
   id: string;
-  circulatorId: string;
+  userId: string;
   amount: number;
   holdSnapshot: number;
-  status: "pending" | "approved" | "rejected" | "auto_rejected";
+  status: LoanStatus;
   createdAt: string;
 };
 
 export type PayRate = {
+  petitionId: string;
   issueId: string;
   rate: number;
+};
+
+export type RoleCategory = {
+  id: string;
+  name: string;
+  description: string;
+  memberIds: string[];
+};
+
+export type ClockSession = {
+  id: string;
+  userId: string;
+  clockIn: string;
+  clockOut: string | null;
+  durationMinutes: number | null;
+  distanceMiles: number | null;
+};
+
+export type LiveClockUser = {
+  userId: string;
+  lat: number;
+  lng: number;
+  since: string;
+};
+
+export type MonthlyPayrollRecord = {
+  id: string;
+  userId: string;
+  month: number;
+  year: number;
+  totalPay: number;
+  totalExpenses: number;
+  netPayable: number;
+  upfrontPaid: number;
+  holdBalance: number;
+  status: PayrollRecordStatus;
+};
+
+export type Conversation = {
+  id: string;
+  name: string;
+  type: "dm" | "group" | "management";
+  unread: number;
+  lastMessageAt: string;
+  participantIds: string[];
+};
+
+export type ExpenseConfig = {
+  carRental: { type: ExpenseConfigType; rate: number; issueRates: { issueId: string; rate: number }[] };
+  housing: { type: ExpenseConfigType; rate: number; issueRates: { issueId: string; rate: number }[] };
 };

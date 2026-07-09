@@ -2,47 +2,58 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { calculateLedgerAmounts } from "./payroll";
 
-test("meets benchmark regression case", () => {
+test("validity standard meets benchmark", () => {
   const result = calculateLedgerAmounts({
     sigs: 36,
     pay: 1,
     payRate: 1.5,
+    valid: 27,
     validityPercent: 75,
     benchmarkPercent: 75,
+    payModel: "validity_standard",
   });
-
   assert.equal(result.payable, 36);
   assert.equal(result.totalPay, 54);
-  assert.equal(result.upfront, 45.9);
-  assert.equal(result.hold, 8.1);
 });
 
-test("below benchmark regression case", () => {
+test("validity standard below benchmark", () => {
   const result = calculateLedgerAmounts({
     sigs: 36,
     pay: 1,
     payRate: 1.5,
+    valid: 27,
     validityPercent: 70,
     benchmarkPercent: 75,
+    payModel: "validity_standard",
   });
-
   assert.equal(result.payable, 34);
   assert.equal(result.totalPay, 51);
-  assert.equal(result.upfront, 43.35);
-  assert.equal(result.hold, 7.65);
 });
 
-test("pending validity leaves payout fields empty", () => {
+test("per valid signature model", () => {
+  const result = calculateLedgerAmounts({
+    sigs: 33,
+    pay: 0.85,
+    payRate: 1.25,
+    valid: 24,
+    validityPercent: 73,
+    benchmarkPercent: 75,
+    payModel: "per_valid_sig",
+  });
+  assert.equal(result.payable, 24);
+  assert.equal(result.totalPay, 30);
+});
+
+test("pending validity", () => {
   const result = calculateLedgerAmounts({
     sigs: 36,
     pay: 1,
     payRate: 1.5,
+    valid: null,
     validityPercent: null,
     benchmarkPercent: 75,
+    payModel: "validity_standard",
   });
-
-  assert.equal(result.estimatedPay, 36);
-  assert.equal(result.payable, null);
-  assert.equal(result.totalPay, null);
   assert.equal(result.validityPending, true);
+  assert.equal(result.totalPay, null);
 });

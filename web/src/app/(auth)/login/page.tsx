@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardBody } from "@/components/ui/card";
-import { demoUsers } from "@/lib/demo-data";
-import { useDemoSession } from "@/lib/demo-session";
+import { roleDemoUsers, useDemoSession } from "@/lib/demo-session";
 import { roleLabel } from "@/lib/navigation";
+import { userDisplayName } from "@/lib/access";
 
 export default function LoginPage() {
   const { signIn } = useDemoSession();
-  const [email, setEmail] = useState(demoUsers[0].email);
+  const [email, setEmail] = useState(roleDemoUsers[3]?.email ?? "");
   const [password, setPassword] = useState("demo1234");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,125 +27,51 @@ export default function LoginPage() {
     setLoading(false);
   }
 
-  function quickSignIn(userEmail: string) {
-    setEmail(userEmail);
-    setPassword("demo1234");
-  }
-
   return (
     <div className="grid w-full max-w-5xl gap-8 lg:grid-cols-[1.1fr_0.9fr]">
       <div className="hidden flex-col justify-between rounded-3xl bg-ink p-10 text-parchment lg:flex">
         <div>
-          <Image
-            src="/brand/logo.svg"
-            alt="Ballot Access Pros"
-            width={72}
-            height={72}
-            className="rounded-2xl bg-parchment p-3"
-          />
-          <p className="mt-8 font-display text-sm tracking-[0.35em] uppercase">
-            Ballot Access
-          </p>
-          <h1 className="font-display text-5xl tracking-[0.12em] uppercase">
-            Pros
-          </h1>
-          <p className="mt-6 max-w-md text-base leading-8 text-parchment/75">
-            Circulator management, validity reconciliation, and payroll in one
-            civic-grade workspace.
-          </p>
+          <Image src="/brand/logo.svg" alt="Ballot Access Pros" width={72} height={72} className="rounded-2xl bg-parchment p-3" />
+          <p className="mt-8 font-display text-sm tracking-[0.35em] uppercase">Ballot Access</p>
+          <h1 className="font-display text-5xl tracking-[0.12em] uppercase">Pros</h1>
+          <p className="mt-6 max-w-md text-base leading-8 text-parchment/75">Circulator management, validity reconciliation, payroll, field operations, and secure team messaging.</p>
         </div>
         <div className="rounded-2xl border border-parchment/10 bg-white/5 p-5">
-          <p className="text-xs uppercase tracking-[0.2em] text-parchment/50">
-            Demo password
-          </p>
+          <p className="text-xs uppercase tracking-[0.2em] text-parchment/50">Demo password</p>
           <p className="mt-2 font-mono text-lg text-brass">demo1234</p>
         </div>
       </div>
-
       <Card className="w-full">
         <CardBody className="space-y-6">
-          <div className="lg:hidden">
-            <Image
-              src="/brand/logo.svg"
-              alt="Ballot Access Pros"
-              width={56}
-              height={56}
-              className="rounded-xl bg-ink p-2"
-            />
-          </div>
-
           <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-civic-navy">
-              Welcome back
-            </p>
+            <p className="text-xs uppercase tracking-[0.25em] text-civic-navy">Welcome back</p>
             <h2 className="mt-2 font-display text-3xl text-ink">Sign in</h2>
-            <p className="mt-2 text-sm text-ink/60">
-              Use a demo account below or enter credentials manually.
-            </p>
           </div>
-
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                required
-              />
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <Link
-                  href="/forgot-password"
-                  className="text-xs font-medium text-civic-navy hover:underline"
-                >
-                  Forgot password?
-                </Link>
+                <Link href="/forgot-password" className="text-xs font-medium text-civic-navy hover:underline">Forgot password?</Link>
               </div>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                required
-              />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
-
-            {error ? (
-              <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">
-                {error}
-              </p>
-            ) : null}
-
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign in"}
-            </Button>
+            {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
+            <Button type="submit" className="w-full" disabled={loading}>{loading ? "Signing in..." : "Sign in"}</Button>
           </form>
-
           <div className="space-y-3 border-t border-ink/10 pt-5">
-            <p className="text-xs font-medium uppercase tracking-[0.2em] text-ink/45">
-              Quick demo access
-            </p>
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-ink/45">Quick demo access</p>
             <div className="grid gap-2">
-              {demoUsers.map((user) => (
-                <button
-                  key={user.id}
-                  type="button"
-                  onClick={() => quickSignIn(user.email)}
-                  className="flex items-center justify-between rounded-xl border border-ink/10 bg-parchment/50 px-4 py-3 text-left transition hover:border-brass/40 hover:bg-white"
-                >
+              {roleDemoUsers.map((user) => (
+                <button key={user.id} type="button" onClick={() => setEmail(user.email)} className="flex items-center justify-between rounded-xl border border-ink/10 bg-parchment/50 px-4 py-3 text-left transition hover:border-brass/40 hover:bg-white">
                   <div>
-                    <p className="text-sm font-medium text-ink">{user.name}</p>
+                    <p className="text-sm font-medium text-ink">{userDisplayName(user)}</p>
                     <p className="text-xs text-ink/55">{user.email}</p>
                   </div>
-                  <span className="rounded-full bg-civic-navy/10 px-2.5 py-1 text-[11px] font-medium text-civic-navy">
-                    {roleLabel(user.role)}
-                  </span>
+                  <span className="rounded-full bg-civic-navy/10 px-2.5 py-1 text-[11px] font-medium text-civic-navy">{roleLabel(user.role)}</span>
                 </button>
               ))}
             </div>
