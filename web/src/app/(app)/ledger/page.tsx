@@ -13,7 +13,7 @@ import { demoUsers, getIssue, getLedgerForUser } from "@/lib/demo-data";
 import { useDemoSession } from "@/lib/demo-session";
 import { visibleUserIds } from "@/lib/access";
 import { payModelLabel } from "@/lib/payroll";
-import { formatCurrency, formatPercent } from "@/lib/format";
+import { formatCurrency, formatDateTime, formatPercent } from "@/lib/format";
 
 function LedgerContent() {
   const { user } = useDemoSession();
@@ -46,11 +46,18 @@ function LedgerContent() {
         const totals = sectionTotals(issueRows);
         return (
           <Card key={issueId}>
-            <CardHeader className="flex flex-wrap items-center gap-3">
-              <h3 className="font-display text-xl text-ink">{issue?.issueNumber}</h3>
-              <span className="text-sm text-ink/55">{issue?.name}</span>
-              <Badge>{payModelLabel(issueRows[0].payModel)}</Badge>
-              {issueRows[0].validityPending ? <Badge tone="warning">Validity pending</Badge> : null}
+            <CardHeader className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <h3 className="font-display text-xl text-ink">{issue?.issueNumber}</h3>
+                <span className="text-sm text-ink/55">{issue?.name}</span>
+                <Badge>{payModelLabel(issueRows[0].payModel)}</Badge>
+                {issueRows[0].validityPending ? <Badge tone="warning">Validity pending</Badge> : null}
+              </div>
+              <p className="text-xs text-ink/45">
+                {issueRows[0].recalculatedAt
+                  ? `Last recalculated ${formatDateTime(issueRows[0].recalculatedAt)}`
+                  : "Not yet recalculated"}
+              </p>
             </CardHeader>
             <CardBody className="p-0">
               <DataTable>

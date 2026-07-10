@@ -12,20 +12,24 @@ export function canEditFinancialConfig(role: UserRole) {
   return role === "super_admin";
 }
 
-export function canApproveTurnIns(role: UserRole) {
-  return role === "super_admin" || role === "account_admin";
-}
-
 export function canApproveLoans(role: UserRole) {
   return role === "super_admin";
 }
 
-export function canUploadValidity(role: UserRole) {
-  return role === "validator" || role === "super_admin";
+export function canRequestLoan(role: UserRole) {
+  return role === "petitioner" || role === "canvasser";
 }
 
-export function canViewValidity(role: UserRole) {
+export function canUploadValidity(role: UserRole) {
   return role === "validator" || role === "super_admin" || role === "account_admin";
+}
+
+export function canEditSubmissions(role: UserRole) {
+  return role === "super_admin" || role === "account_admin";
+}
+
+export function canManageUsers(role: UserRole) {
+  return role === "super_admin";
 }
 
 export function visibleUserIds(viewer: DemoUser, allUserIds: string[]) {

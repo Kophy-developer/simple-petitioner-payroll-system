@@ -11,7 +11,7 @@ export default function AdminPage() {
   return (
     <div className="space-y-8">
       <PageHeader eyebrow="Configuration" title="Admin Panel" description="Users, wages, currency, and system benchmark." actions={<Link href="/role-categories" className="text-sm text-civic-navy hover:underline">Role categories</Link>} />
-      <Card className="max-w-sm"><CardBody><p className="text-xs uppercase tracking-[0.2em] text-ink/50">Benchmark %</p><p className="font-display text-4xl tabular-nums">{benchmarkPercent}%</p><Link href="/pay-table" className="mt-3 inline-block text-sm text-civic-navy hover:underline">Edit via pay table</Link></CardBody></Card>
+      <Card className="max-w-sm"><CardBody><p className="text-xs uppercase tracking-[0.2em] text-ink/50">Benchmark %</p><p className="font-display text-4xl tabular-nums">{benchmarkPercent}%</p><Link href="/pay-rates" className="mt-3 inline-block text-sm text-civic-navy hover:underline">Edit via pay rates</Link></CardBody></Card>
       <Card><CardBody className="p-0">
         <DataTable>
           <thead><tr><Th>Name</Th><Th>Email</Th><Th>Role</Th><Th>Wage</Th><Th>Currency</Th><Th /></tr></thead>

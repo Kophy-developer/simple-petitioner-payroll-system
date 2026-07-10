@@ -44,7 +44,7 @@ export default function MonthlyPayrollPage() {
           </tbody>
         </DataTable>
       </CardBody></Card>
-      <p className="text-xs text-ink/50">Locked records are immutable. Future payment API integration uses these as input.</p>
+      <p className="text-xs text-ink/50">Payment disbursement — Phase 2. Locked records are immutable.</p>
     </div>
   );
 }

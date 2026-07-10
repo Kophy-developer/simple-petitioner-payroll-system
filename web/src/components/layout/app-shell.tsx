@@ -31,11 +31,14 @@ function NavLinks({ role, pathname, onNavigate }: { role: UserRole; pathname: st
               href={item.href}
               onClick={onNavigate}
               className={cn(
-                "block rounded-xl px-3 py-2.5 text-sm transition",
+                "flex items-center justify-between rounded-xl px-3 py-2.5 text-sm transition",
                 active ? "bg-brass/15 font-medium text-ink" : "text-ink/70 hover:bg-ink/5 hover:text-ink",
               )}
             >
-              {item.label}
+              <span>{item.label}</span>
+              {item.comingSoon ? (
+                <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[10px] font-medium text-ink/45">Soon</span>
+              ) : null}
             </Link>
           </div>
         );

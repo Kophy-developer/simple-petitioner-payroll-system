@@ -1,38 +1,23 @@
-"use client";
-
-import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardBody } from "@/components/ui/card";
-import { conversations } from "@/lib/demo-data";
-import { formatDate } from "@/lib/format";
 
-export default function MessagesPage() {
-  const sorted = [...conversations].sort((a, b) => {
-    if (a.type === "management") return -1;
-    if (b.type === "management") return 1;
-    return b.lastMessageAt.localeCompare(a.lastMessageAt);
-  });
-
+export default function MessagesComingSoonPage() {
   return (
     <div className="space-y-8">
-      <PageHeader eyebrow="Communications" title="Messaging" description="Encrypted conversations. Notification payloads show sender name only." />
-      <div className="grid gap-3">
-        {sorted.map((c) => (
-          <Link key={c.id} href={`/messages/${c.id}`}>
-            <Card className="transition hover:border-brass/30"><CardBody className="flex items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="font-medium text-ink">{c.name}</h2>
-                  {c.type === "management" ? <Badge tone="navy">Pinned</Badge> : null}
-                </div>
-                <p className="text-xs text-ink/50">{formatDate(c.lastMessageAt)} · {c.type}</p>
-              </div>
-              {c.unread > 0 ? <Badge tone="warning">{c.unread}</Badge> : null}
-            </CardBody></Card>
-          </Link>
-        ))}
-      </div>
+      <PageHeader
+        eyebrow="Phase 2"
+        title="Messages"
+        description="Messaging, group chats, and calls ship in Phase 2."
+      />
+      <Card>
+        <CardBody className="space-y-3 py-16 text-center">
+          <p className="font-display text-3xl text-ink">Coming soon</p>
+          <p className="mx-auto max-w-md text-sm leading-7 text-ink/60">
+            Phase 2 will add encrypted messaging, announcements, and Agora voice/video calls.
+            This nav item is reserved so the menu does not restructure later.
+          </p>
+        </CardBody>
+      </Card>
     </div>
   );
 }

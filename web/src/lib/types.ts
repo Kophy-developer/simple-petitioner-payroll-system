@@ -9,7 +9,6 @@ export type UserRole =
 export type PayModel = "validity_standard" | "per_valid_sig";
 export type WageCurrency = "USD" | "PHP";
 export type UserStatus = "active" | "inactive";
-export type TurnInStatus = "pending" | "approved" | "rejected";
 export type LoanStatus = "pending" | "approved" | "rejected" | "auto_rejected";
 export type ExpenseType =
   | "upfront_draw"
@@ -66,19 +65,8 @@ export type Submission = {
   pageNumbers: number;
   pooledSignatures: number;
   pooledPages: number;
-};
-
-export type TurnInUpload = {
-  id: string;
-  userId: string;
-  fileName: string;
-  issueIds: string[];
-  turnInDate: string;
-  turnInNumber: string;
-  notes: string;
-  status: TurnInStatus;
-  reviewNotes?: string;
-  submittedAt: string;
+  lastEditedBy?: string | null;
+  lastEditedAt?: string | null;
 };
 
 export type ValidityRecord = {
@@ -89,6 +77,7 @@ export type ValidityRecord = {
   usable: number;
   valid: number;
   validityPercent: number;
+  entryMethod: "upload" | "manual";
 };
 
 export type LedgerRow = {
@@ -109,6 +98,7 @@ export type LedgerRow = {
   hold: number | null;
   payModel: PayModel;
   validityPending: boolean;
+  recalculatedAt: string | null;
 };
 
 export type Expense = {
@@ -143,22 +133,6 @@ export type RoleCategory = {
   memberIds: string[];
 };
 
-export type ClockSession = {
-  id: string;
-  userId: string;
-  clockIn: string;
-  clockOut: string | null;
-  durationMinutes: number | null;
-  distanceMiles: number | null;
-};
-
-export type LiveClockUser = {
-  userId: string;
-  lat: number;
-  lng: number;
-  since: string;
-};
-
 export type MonthlyPayrollRecord = {
   id: string;
   userId: string;
@@ -170,15 +144,7 @@ export type MonthlyPayrollRecord = {
   upfrontPaid: number;
   holdBalance: number;
   status: PayrollRecordStatus;
-};
-
-export type Conversation = {
-  id: string;
-  name: string;
-  type: "dm" | "group" | "management";
-  unread: number;
-  lastMessageAt: string;
-  participantIds: string[];
+  generatedOn: string;
 };
 
 export type ExpenseConfig = {

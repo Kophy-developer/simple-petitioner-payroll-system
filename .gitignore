@@ -18,9 +18,7 @@ supabase/.branches
 supabase/.temp
 
 # Flutter (Phase 2)
-flutter/.dart_tool/
-flutter/build/
-flutter/.flutter-plugins-dependencies
+# Mobile removed from Phase 1 — do not reintroduce until Phase 2
 
 # OS / editor
 .DS_Store
