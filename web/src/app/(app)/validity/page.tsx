@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Upload } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -10,42 +10,294 @@ import { Input } from "@/components/ui/input";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DataTable, Td, Th } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
-import { demoUsers, issues } from "@/lib/demo-data";
 import { canUploadValidity } from "@/lib/access";
 import { useDemoSession } from "@/lib/demo-session";
-
-const preview = [
-  { name: "Jordan Reed", dups: 4, usable: 31, valid: 27, validity: 75, matched: true },
-  { name: "Unknown Circulator", dups: 1, usable: 10, valid: 8, validity: 80, matched: false },
-];
+import { formatPercent } from "@/lib/format";
+import {
+  applyValidityUpload,
+  listIssues,
+  listProfiles,
+  listValidity,
+  uploadValidityFile,
+  upsertValidityManual,
+} from "@/lib/api/live";
+import { parseValidityWorkbook, type ValidityPreviewRow } from "@/lib/validity-excel";
+import type { DemoUser, Issue, ValidityRecord } from "@/lib/types";
 
 export default function ValidityPage() {
   const { user } = useDemoSession();
-  const [tab, setTab] = useState<"upload" | "manual">("upload");
-  const [issueId, setIssueId] = useState(issues[0].id);
-  const [file, setFile] = useState<string | null>(null);
+  const [tab, setTab] = useState<"upload" | "manual">("manual");
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [issueId, setIssueId] = useState("");
+  const [petitioners, setPetitioners] = useState<DemoUser[]>([]);
+  const [profiles, setProfiles] = useState<DemoUser[]>([]);
+  const [userId, setUserId] = useState("");
+  const [records, setRecords] = useState<ValidityRecord[]>([]);
+  const [names, setNames] = useState<Record<string, string>>({});
+  const [dups, setDups] = useState("0");
+  const [usable, setUsable] = useState("0");
+  const [valid, setValid] = useState("0");
+  const [validityPct, setValidityPct] = useState("75");
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [preview, setPreview] = useState<ValidityPreviewRow[]>([]);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  const canWrite = user ? canUploadValidity(user.role) : false;
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [issueRows, people, validityRows] = await Promise.all([
+        listIssues(),
+        listProfiles(),
+        listValidity(),
+      ]);
+      setIssues(issueRows);
+      setProfiles(people);
+      const pet = people.filter((p) => p.role === "petitioner" || p.role === "canvasser");
+      setPetitioners(pet);
+      if (!issueId && issueRows[0]) setIssueId(issueRows[0].id);
+      if (!userId && pet[0]) setUserId(pet[0].id);
+      setRecords(validityRows);
+      setNames(
+        Object.fromEntries(people.map((p) => [p.id, `${p.firstName} ${p.lastName}`])),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load validity data.");
+    } finally {
+      setLoading(false);
+    }
+  }, [issueId, userId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
   if (!user) return null;
 
-  const canWrite = canUploadValidity(user.role);
-  const petitioners = demoUsers.filter((u) => u.role === "petitioner");
+  async function saveManual(e: React.FormEvent) {
+    e.preventDefault();
+    if (!issueId || !userId) return;
+    setSaving(true);
+    setError("");
+    try {
+      await upsertValidityManual({
+        issueId,
+        userId,
+        dups: parseInt(dups, 10),
+        usable: parseInt(usable, 10),
+        valid: parseInt(valid, 10),
+        validityPct: parseFloat(validityPct),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save validity.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function onFile(file: File | null) {
+    setError("");
+    setMessage("");
+    setPreview([]);
+    setPendingFile(file);
+    setFileName(file?.name ?? null);
+    if (!file) return;
+    try {
+      const buffer = await file.arrayBuffer();
+      const rows = parseValidityWorkbook(
+        buffer,
+        profiles.map((p) => ({
+          id: p.id,
+          initials: p.initials,
+          email: p.email,
+          firstName: p.firstName,
+          lastName: p.lastName,
+        })),
+      );
+      setPreview(rows);
+      if (rows.length === 0) {
+        setError("No data rows found. Expected headers like Initials, DUPs, Usable, Valid, Validity%.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not parse workbook.");
+    }
+  }
+
+  async function commitUpload() {
+    if (!issueId || !pendingFile) return;
+    const matched = preview.filter((r) => r.status === "matched" && r.userId);
+    if (matched.length === 0) {
+      setError("No matched rows to import.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      await uploadValidityFile(issueId, pendingFile);
+      const count = await applyValidityUpload(
+        issueId,
+        matched.map((r) => ({
+          userId: r.userId as string,
+          dups: r.dups,
+          usable: r.usable,
+          valid: r.valid,
+          validityPct: r.validityPct,
+        })),
+      );
+      setMessage(`Imported ${count} validity row(s). Ledgers recalculated.`);
+      setPreview([]);
+      setPendingFile(null);
+      setFileName(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not import validity.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const issueLabel = (id: string) => issues.find((i) => i.id === id)?.issueNumber ?? id;
+  const visibleRecords = issueId ? records.filter((r) => r.issueId === issueId) : records;
+  const matchedCount = preview.filter((r) => r.status === "matched").length;
 
   return (
     <div className="space-y-8">
       <PageHeader
         eyebrow="Collection"
         title="Validity Records"
-        description="Upload Excel or enter validity data manually. Both trigger ledger recalculation."
+        description="Upload Excel or enter rows manually. Matched rows recalculate ledger pay."
       />
 
+      {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
+      {message ? <p className="rounded-xl bg-success/10 px-4 py-3 text-sm text-success">{message}</p> : null}
+      {loading ? <p className="text-sm text-ink/55">Loading…</p> : null}
+
       <div className="flex gap-2">
-        <Button variant={tab === "upload" ? "primary" : "ghost"} size="sm" onClick={() => setTab("upload")}>Upload</Button>
-        <Button variant={tab === "manual" ? "primary" : "ghost"} size="sm" onClick={() => setTab("manual")}>Manual entry</Button>
+        <Button variant={tab === "manual" ? "primary" : "ghost"} size="sm" onClick={() => setTab("manual")}>
+          Manual entry
+        </Button>
+        <Button variant={tab === "upload" ? "primary" : "ghost"} size="sm" onClick={() => setTab("upload")}>
+          Upload
+        </Button>
       </div>
 
       {!canWrite ? (
-        <Card><CardBody><p className="text-sm text-ink/65">You can view validity records. Validators and admins can upload or enter data.</p></CardBody></Card>
-      ) : tab === "upload" ? (
+        <Card>
+          <CardBody>
+            <p className="text-sm text-ink/65">You can view validity records. Validators and admins can enter data.</p>
+          </CardBody>
+        </Card>
+      ) : tab === "manual" ? (
+        <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+          <Card className="max-w-2xl">
+            <CardBody>
+              <form className="grid gap-4 sm:grid-cols-2" onSubmit={(e) => void saveManual(e)}>
+                <div className="space-y-2">
+                  <Label>Issue</Label>
+                  <Select value={issueId} onChange={(e) => setIssueId(e.target.value)}>
+                    {issues.map((i) => (
+                      <option key={i.id} value={i.id}>{i.issueNumber}</option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Circulator</Label>
+                  <Select value={userId} onChange={(e) => setUserId(e.target.value)}>
+                    {petitioners.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.firstName} {u.lastName}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>DUPs</Label>
+                  <Input type="number" min={0} value={dups} onChange={(e) => setDups(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Usable</Label>
+                  <Input type="number" min={0} value={usable} onChange={(e) => setUsable(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Valid</Label>
+                  <Input type="number" min={0} value={valid} onChange={(e) => setValid(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Validity %</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step="0.1"
+                    value={validityPct}
+                    onChange={(e) => setValidityPct(e.target.value)}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <Button type="submit" disabled={saving}>
+                    {saving ? "Saving…" : "Save row"}
+                  </Button>
+                  {saved ? (
+                    <span className="ml-3 text-sm text-success">Saved — ledger recalculated.</span>
+                  ) : null}
+                </div>
+              </form>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <h2 className="font-display text-xl text-ink">Existing rows</h2>
+            </CardHeader>
+            <CardBody className="p-0">
+              <DataTable>
+                <thead>
+                  <tr>
+                    <Th>Issue</Th>
+                    <Th>Circulator</Th>
+                    <Th align="right">DUPs</Th>
+                    <Th align="right">Usable</Th>
+                    <Th align="right">Valid</Th>
+                    <Th align="right">Validity %</Th>
+                    <Th>Method</Th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-ink/8 bg-white/50">
+                  {visibleRecords.map((r) => (
+                    <tr key={r.id}>
+                      <Td>{issueLabel(r.issueId)}</Td>
+                      <Td>{names[r.userId] ?? "Unknown"}</Td>
+                      <Td align="right">{r.dups}</Td>
+                      <Td align="right">{r.usable}</Td>
+                      <Td align="right">{r.valid}</Td>
+                      <Td align="right">{formatPercent(r.validityPercent)}</Td>
+                      <Td><Badge>{r.entryMethod}</Badge></Td>
+                    </tr>
+                  ))}
+                  {visibleRecords.length === 0 ? (
+                    <tr>
+                      <Td colSpan={7}>
+                        <p className="py-6 text-center text-sm text-ink/50">No validity rows yet.</p>
+                      </Td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </DataTable>
+            </CardBody>
+          </Card>
+        </div>
+      ) : (
         <div className="grid gap-6 xl:grid-cols-[340px_1fr]">
           <Card>
             <CardHeader><h2 className="font-display text-xl text-ink">Upload Excel</h2></CardHeader>
@@ -53,84 +305,85 @@ export default function ValidityPage() {
               <div className="space-y-2">
                 <Label>Issue</Label>
                 <Select value={issueId} onChange={(e) => setIssueId(e.target.value)}>
-                  {issues.map((i) => <option key={i.id} value={i.id}>{i.issueNumber}</option>)}
+                  {issues.map((i) => (
+                    <option key={i.id} value={i.id}>{i.issueNumber}</option>
+                  ))}
                 </Select>
               </div>
               <label className="flex cursor-pointer flex-col items-center rounded-2xl border-2 border-dashed border-ink/15 py-10 transition hover:border-brass/40">
                 <Upload className="text-ink/45" />
                 <p className="mt-2 text-sm font-medium">Drop Excel workbook</p>
-                <input type="file" className="hidden" accept=".xlsx,.xls" onChange={(e) => setFile(e.target.files?.[0]?.name ?? null)} />
+                <p className="mt-1 px-4 text-center text-xs text-ink/45">
+                  Columns: Initials or Email, DUPs, Usable, Valid, Validity%
+                </p>
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
+                />
               </label>
-              {file ? <p className="text-sm text-ink/70">{file}</p> : null}
-              <Button className="w-full" disabled={!file}>Preview import</Button>
+              {fileName ? <p className="text-sm text-ink/70">{fileName}</p> : null}
+              <Button
+                className="w-full"
+                disabled={saving || matchedCount === 0}
+                onClick={() => void commitUpload()}
+              >
+                {saving ? "Importing…" : `Commit ${matchedCount} matched row(s)`}
+              </Button>
             </CardBody>
           </Card>
           <Card>
             <CardHeader className="flex justify-between">
               <h2 className="font-display text-xl text-ink">Preview</h2>
-              <Badge tone="warning">Confirm before commit</Badge>
+              <Badge tone={matchedCount ? "success" : "warning"}>
+                {preview.length ? `${matchedCount}/${preview.length} matched` : "Awaiting file"}
+              </Badge>
             </CardHeader>
-            <CardBody className="space-y-4 p-0">
+            <CardBody className="p-0">
               <DataTable>
                 <thead>
                   <tr>
-                    <Th>Circulator</Th>
+                    <Th>Row</Th>
+                    <Th>User</Th>
                     <Th align="right">DUPs</Th>
                     <Th align="right">Usable</Th>
                     <Th align="right">Valid</Th>
-                    <Th align="right">Validity %</Th>
-                    <Th>Match</Th>
+                    <Th align="right">%</Th>
+                    <Th>Status</Th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink/8 bg-white/50">
-                  {preview.map((r) => (
-                    <tr key={r.name} className={!r.matched ? "bg-danger/5" : undefined}>
-                      <Td>{r.name}</Td>
-                      <Td align="right">{r.dups}</Td>
-                      <Td align="right">{r.usable}</Td>
-                      <Td align="right">{r.valid}</Td>
-                      <Td align="right">{r.validity}%</Td>
-                      <Td>{r.matched ? <Badge tone="success">Matched</Badge> : <Badge tone="danger">Review</Badge>}</Td>
+                  {preview.map((row) => (
+                    <tr key={row.rowNumber}>
+                      <Td>{row.rowNumber}</Td>
+                      <Td>{row.name}</Td>
+                      <Td align="right">{row.dups}</Td>
+                      <Td align="right">{row.usable}</Td>
+                      <Td align="right">{row.valid}</Td>
+                      <Td align="right">{formatPercent(row.validityPct)}</Td>
+                      <Td>
+                        <Badge tone={row.status === "matched" ? "success" : "warning"}>
+                          {row.status}
+                        </Badge>
+                        {row.error ? <p className="mt-1 text-xs text-danger">{row.error}</p> : null}
+                      </Td>
                     </tr>
                   ))}
+                  {preview.length === 0 ? (
+                    <tr>
+                      <Td colSpan={7}>
+                        <p className="py-8 text-center text-sm text-ink/50">
+                          Choose a workbook to preview matched circulators.
+                        </p>
+                      </Td>
+                    </tr>
+                  ) : null}
                 </tbody>
               </DataTable>
-              <div className="border-t border-ink/10 px-6 py-4">
-                <Button variant="secondary">Commit to ledger</Button>
-              </div>
             </CardBody>
           </Card>
         </div>
-      ) : (
-        <Card className="max-w-2xl">
-          <CardBody>
-            <form
-              className="grid gap-4 sm:grid-cols-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                setSaved(true);
-                setTimeout(() => setSaved(false), 2000);
-              }}
-            >
-              <div className="space-y-2">
-                <Label>Issue</Label>
-                <Select>{issues.map((i) => <option key={i.id}>{i.issueNumber}</option>)}</Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Circulator</Label>
-                <Select>{petitioners.map((u) => <option key={u.id}>{u.firstName} {u.lastName}</option>)}</Select>
-              </div>
-              <div className="space-y-2"><Label>DUPs</Label><Input type="number" min={0} defaultValue={0} /></div>
-              <div className="space-y-2"><Label>Usable</Label><Input type="number" min={0} defaultValue={0} /></div>
-              <div className="space-y-2"><Label>Valid</Label><Input type="number" min={0} defaultValue={0} /></div>
-              <div className="space-y-2"><Label>Validity %</Label><Input type="number" min={0} max={100} step="0.1" defaultValue={75} /></div>
-              <div className="sm:col-span-2">
-                <Button type="submit">Save row</Button>
-                {saved ? <span className="ml-3 text-sm text-success">Saved — ledger recalculated.</span> : null}
-              </div>
-            </form>
-          </CardBody>
-        </Card>
       )}
     </div>
   );

@@ -6,22 +6,24 @@ import { useDemoSession } from "@/lib/demo-session";
 import { canAccess } from "@/lib/navigation";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useDemoSession();
+  const { user, isLoading, authReady } = useDemoSession();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !authReady) return;
+
     if (!user) {
       router.replace("/login");
       return;
     }
+
     if (!canAccess(user.role, pathname)) {
       router.replace("/dashboard");
     }
-  }, [user, isLoading, pathname, router]);
+  }, [user, isLoading, authReady, pathname, router]);
 
-  if (isLoading || !user) {
+  if (isLoading || !authReady || !user) {
     return (
       <div className="flex flex-1 items-center justify-center">
         <div className="h-8 w-8 animate-pulse rounded-full bg-brass/40" />

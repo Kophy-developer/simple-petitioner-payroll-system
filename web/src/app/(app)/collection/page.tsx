@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { FileDown } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -9,21 +9,53 @@ import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Card, CardBody } from "@/components/ui/card";
 import { DataTable, Td, Th } from "@/components/ui/data-table";
-import { getSubmissionsForIssue, getUser, issues } from "@/lib/demo-data";
-import { useDemoSession } from "@/lib/demo-session";
-import { visibleUserIds } from "@/lib/access";
+import { getProfile, listIssues, listSubmissions } from "@/lib/api/live";
+import type { DemoUser, Issue, Submission } from "@/lib/types";
 
 export default function CollectionPage() {
-  const { user } = useDemoSession();
-  const [issueId, setIssueId] = useState(issues[0].id);
-  if (!user) return null;
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [issueId, setIssueId] = useState("");
+  const [rows, setRows] = useState<Submission[]>([]);
+  const [people, setPeople] = useState<Record<string, DemoUser>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const issue = issues.find((i) => i.id === issueId)!;
-  const allowed = visibleUserIds(
-    user,
-    getSubmissionsForIssue(issueId).map((s) => s.userId),
-  );
-  const rows = getSubmissionsForIssue(issueId).filter((r) => allowed.includes(r.userId));
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const issueRows = await listIssues();
+      setIssues(issueRows);
+      const activeIssue = issueId || issueRows[0]?.id || "";
+      if (!issueId && activeIssue) setIssueId(activeIssue);
+      if (!activeIssue) {
+        setRows([]);
+        return;
+      }
+      const submissions = await listSubmissions(activeIssue);
+      setRows(submissions);
+      const unique = [...new Set(submissions.map((s) => s.userId))];
+      const entries = await Promise.all(
+        unique.map(async (id) => {
+          const profile = await getProfile(id);
+          return [id, profile] as const;
+        }),
+      );
+      setPeople(
+        Object.fromEntries(entries.filter(([, profile]) => profile) as [string, DemoUser][]),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load collection.");
+    } finally {
+      setLoading(false);
+    }
+  }, [issueId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const issue = issues.find((i) => i.id === issueId);
   const totals = rows.reduce(
     (a, r) => ({
       raw: a.raw + r.rawSignatures,
@@ -39,7 +71,7 @@ export default function CollectionPage() {
       <PageHeader
         eyebrow="Collection"
         title="Master Collection Table"
-        description="One issue at a time with column totals and PDF export."
+        description="One issue at a time with live submission totals."
         actions={
           <div className="flex flex-wrap items-end gap-3">
             <div className="w-56 space-y-2">
@@ -57,11 +89,14 @@ export default function CollectionPage() {
         }
       />
 
+      {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
+      {loading ? <p className="text-sm text-ink/55">Loading collection…</p> : null}
+
       <Card>
         <CardBody className="space-y-4 p-0">
           <div className="border-b border-ink/10 px-6 py-4">
-            <h2 className="font-display text-2xl text-ink">{issue.issueNumber}</h2>
-            <p className="text-sm text-ink/60">{issue.name}</p>
+            <h2 className="font-display text-2xl text-ink">{issue?.issueNumber ?? "Issue"}</h2>
+            <p className="text-sm text-ink/60">{issue?.name}</p>
           </div>
           <DataTable>
             <thead>
@@ -75,13 +110,13 @@ export default function CollectionPage() {
             </thead>
             <tbody className="divide-y divide-ink/8 bg-white/50">
               {rows.map((row) => {
-                const u = getUser(row.userId);
+                const u = people[row.userId];
                 return (
                   <tr key={row.id}>
                     <Td>
-                      <Link href={`/ledger?user=${row.userId}`} className="font-medium text-civic-navy hover:underline">
+                      <Link href={`/ledger?view=individual&user=${row.userId}`} className="font-medium text-civic-navy hover:underline">
                         {u?.firstName} {u?.lastName}{" "}
-                        <span className="text-ink/45">({u?.initials})</span>
+                        <span className="text-ink/45">({u?.initials ?? "—"})</span>
                       </Link>
                     </Td>
                     <Td align="right">{row.rawSignatures}</Td>

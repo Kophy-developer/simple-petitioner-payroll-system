@@ -34,6 +34,7 @@ export type DemoUser = {
   wageCurrency?: WageCurrency;
   hourlyWage?: number;
   teamMemberIds?: string[];
+  authId?: string;
 };
 
 export type Petition = {
@@ -108,6 +109,7 @@ export type Expense = {
   type: ExpenseType;
   amount: number;
   date: string;
+  endDate?: string | null;
   receiptName: string;
 };
 
@@ -116,8 +118,11 @@ export type LoanRequest = {
   userId: string;
   amount: number;
   holdSnapshot: number;
+  note?: string | null;
   status: LoanStatus;
   createdAt: string;
+  reviewedAt?: string | null;
+  reviewedBy?: string | null;
 };
 
 export type PayRate = {

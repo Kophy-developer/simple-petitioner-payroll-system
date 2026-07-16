@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,13 +10,21 @@ import { Card, CardBody } from "@/components/ui/card";
 import { roleDemoUsers, useDemoSession } from "@/lib/demo-session";
 import { roleLabel } from "@/lib/navigation";
 import { userDisplayName } from "@/lib/access";
+import { demoPassword } from "@/lib/demo-data";
 
 export default function LoginPage() {
   const { signIn } = useDemoSession();
-  const [email, setEmail] = useState(roleDemoUsers[3]?.email ?? "");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setEmail(roleDemoUsers[3]?.email ?? "");
+    setPassword(demoPassword);
+    setReady(true);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,23 +58,51 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                suppressHydrationWarning
+              />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
                 <Link href="/forgot-password" className="text-xs font-medium text-civic-navy hover:underline">Forgot password?</Link>
               </div>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                suppressHydrationWarning
+              />
             </div>
             {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
-            <Button type="submit" className="w-full" disabled={loading}>{loading ? "Signing in..." : "Sign in"}</Button>
+            <Button type="submit" className="w-full" disabled={loading || !ready}>
+              {loading ? "Signing in..." : "Sign in"}
+            </Button>
           </form>
           <div className="space-y-3 border-t border-ink/10 pt-5">
             <p className="text-xs font-medium uppercase tracking-[0.2em] text-ink/45">Quick demo access</p>
             <div className="grid gap-2">
               {roleDemoUsers.map((user) => (
-                <button key={user.id} type="button" onClick={() => setEmail(user.email)} className="flex items-center justify-between rounded-xl border border-ink/10 bg-parchment/50 px-4 py-3 text-left transition hover:border-brass/40 hover:bg-white">
+                <button
+                  key={user.id}
+                  type="button"
+                  onClick={() => {
+                    setEmail(user.email);
+                    setPassword(demoPassword);
+                  }}
+                  className="flex items-center justify-between rounded-xl border border-ink/10 bg-parchment/50 px-4 py-3 text-left transition hover:border-brass/40 hover:bg-white"
+                >
                   <div>
                     <p className="text-sm font-medium text-ink">{userDisplayName(user)}</p>
                     <p className="text-xs text-ink/55">{user.email}</p>

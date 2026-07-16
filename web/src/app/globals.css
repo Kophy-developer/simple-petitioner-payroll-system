@@ -39,3 +39,23 @@ body {
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
+
+@media print {
+  aside,
+  nav,
+  header,
+  .print\:hidden,
+  [data-print-hide="true"] {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+  }
+}

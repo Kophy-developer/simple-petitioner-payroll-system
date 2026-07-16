@@ -27,8 +27,9 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${fraunces.variable} ${dmSans.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-parchment text-ink">
+      <body className="min-h-full flex flex-col bg-parchment text-ink" suppressHydrationWarning>
         <DemoSessionProvider>{children}</DemoSessionProvider>
       </body>
     </html>

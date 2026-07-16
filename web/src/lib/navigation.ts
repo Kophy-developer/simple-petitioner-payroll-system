@@ -6,7 +6,6 @@ export type NavItem = {
   roles: UserRole[];
   section?: string;
   matchPrefix?: boolean;
-  comingSoon?: boolean;
 };
 
 const allRoles: UserRole[] = [
@@ -27,13 +26,11 @@ export const navItems: NavItem[] = [
   { href: "/directory", label: "Employee Directory", roles: ["super_admin", "account_admin"], section: "People" },
   { href: "/ledger", label: "Ledger", roles: ["super_admin", "account_admin", "team_lead", "petitioner"], section: "Payroll", matchPrefix: true },
   { href: "/payroll", label: "Payroll & Expenses", roles: ["super_admin", "account_admin", "team_lead", "petitioner", "canvasser"], section: "Payroll", matchPrefix: true },
-  { href: "/loans", label: "Loans & Advances", roles: ["super_admin", "petitioner", "canvasser"], section: "Payroll" },
+  { href: "/loans", label: "Loans & Advances", roles: ["super_admin", "petitioner", "canvasser"], section: "Payroll", matchPrefix: true },
   { href: "/payroll/monthly", label: "Monthly Payroll", roles: ["super_admin", "account_admin"], section: "Configuration" },
   { href: "/pay-rates", label: "Pay Rates", roles: ["super_admin"], section: "Configuration" },
   { href: "/expense-config", label: "Car & Housing", roles: ["super_admin", "account_admin"], section: "Configuration" },
-  { href: "/role-categories", label: "Role Categories", roles: ["super_admin"], section: "Configuration", matchPrefix: true },
   { href: "/admin", label: "Admin Panel", roles: ["super_admin", "account_admin"], section: "Configuration", matchPrefix: true },
-  { href: "/messages", label: "Messages", roles: allRoles, section: "Phase 2", comingSoon: true },
   { href: "/profile", label: "Profile", roles: allRoles, section: "Account" },
 ];
 

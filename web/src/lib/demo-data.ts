@@ -69,17 +69,43 @@ export const validityRecords: ValidityRecord[] = [
 ];
 
 export const expenses: Expense[] = [
-  { id: "e-1", userId: "u-pet-1", issueId: "i-1", type: "hotel_travel", amount: 124.5, date: "2026-05-10", receiptName: "marriott-co.pdf" },
+  { id: "e-1", userId: "u-pet-1", issueId: "i-1", type: "hotel_travel", amount: 124.5, date: "2026-05-10", endDate: "2026-05-12", receiptName: "marriott-co.pdf" },
   { id: "e-2", userId: "u-pet-1", issueId: null, type: "upfront_draw", amount: 85, date: "2026-05-16", receiptName: "fuel.jpg" },
   { id: "e-3", userId: "u-pet-1", issueId: "i-1", type: "chargeback", amount: 42, date: "2026-05-22", receiptName: "supplies.pdf" },
-  { id: "e-4", userId: "u-pet-2", issueId: null, type: "car_rental", amount: 180, date: "2026-06-01", receiptName: "hertz.pdf" },
-  { id: "e-5", userId: "u-canv", issueId: null, type: "housing", amount: 95, date: "2026-06-05", receiptName: "rent.jpg" },
+  { id: "e-4", userId: "u-pet-2", issueId: null, type: "car_rental", amount: 180, date: "2026-06-01", endDate: "2026-06-04", receiptName: "hertz.pdf" },
+  { id: "e-5", userId: "u-canv", issueId: null, type: "housing", amount: 95, date: "2026-06-05", endDate: "2026-06-05", receiptName: "rent.jpg" },
 ];
 
 export const loanRequests: LoanRequest[] = [
-  { id: "lr-1", userId: "u-pet-1", amount: 50, holdSnapshot: 8.1, status: "pending", createdAt: "2026-06-28T14:22:00Z" },
-  { id: "lr-2", userId: "u-pet-2", amount: 120, holdSnapshot: 9, status: "auto_rejected", createdAt: "2026-06-25T09:10:00Z" },
-  { id: "lr-3", userId: "u-pet-3", amount: 25, holdSnapshot: 6.3, status: "approved", createdAt: "2026-06-20T16:45:00Z" },
+  {
+    id: "lr-1",
+    userId: "u-pet-1",
+    amount: 50,
+    holdSnapshot: 80,
+    note: "Need an advance for lodging before next turn-in payout.",
+    status: "pending",
+    createdAt: "2026-06-28T14:22:00Z",
+  },
+  {
+    id: "lr-2",
+    userId: "u-pet-2",
+    amount: 120,
+    holdSnapshot: 9,
+    note: "Car repair bridge until hold releases.",
+    status: "auto_rejected",
+    createdAt: "2026-06-25T09:10:00Z",
+  },
+  {
+    id: "lr-3",
+    userId: "u-pet-3",
+    amount: 25,
+    holdSnapshot: 6.3,
+    note: "Grocery run between collection weekends.",
+    status: "approved",
+    createdAt: "2026-06-20T16:45:00Z",
+    reviewedAt: "2026-06-20T18:10:00Z",
+    reviewedBy: "u-super",
+  },
 ];
 
 export const roleCategories: RoleCategory[] = [

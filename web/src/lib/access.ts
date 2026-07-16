@@ -33,11 +33,12 @@ export function canManageUsers(role: UserRole) {
 }
 
 export function visibleUserIds(viewer: DemoUser, allUserIds: string[]) {
+  const selfId = viewer.authId ?? viewer.id;
   if (canViewAllLedgers(viewer.role)) return allUserIds;
   if (canViewTeamData(viewer.role)) {
-    return [viewer.id, ...(viewer.teamMemberIds ?? [])];
+    return [selfId, ...(viewer.teamMemberIds ?? [])];
   }
-  return [viewer.id];
+  return [selfId];
 }
 
 export function userDisplayName(user: Pick<DemoUser, "firstName" | "lastName">) {
