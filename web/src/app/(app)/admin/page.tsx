@@ -181,7 +181,6 @@ export default function AdminPage() {
                     "account_admin",
                     "team_lead",
                     "petitioner",
-                    "canvasser",
                     "validator",
                   ] as UserRole[]
                 ).map((r) => (

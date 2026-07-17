@@ -31,7 +31,6 @@ export const navItems: NavItem[] = [
   { href: "/pay-rates", label: "Pay Rates", roles: ["super_admin"], section: "Configuration" },
   { href: "/expense-config", label: "Car & Housing", roles: ["super_admin", "account_admin"], section: "Configuration" },
   { href: "/admin", label: "Admin Panel", roles: ["super_admin", "account_admin"], section: "Configuration", matchPrefix: true },
-  { href: "/profile", label: "Profile", roles: allRoles, section: "Account" },
 ];
 
 export function getNavForRole(role: UserRole) {

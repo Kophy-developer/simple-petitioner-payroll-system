@@ -39,7 +39,7 @@ type ProfileRow = {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 const roleDemoUsers = (
-  ["super_admin", "account_admin", "team_lead", "petitioner", "canvasser", "validator"] as UserRole[]
+  ["super_admin", "account_admin", "team_lead", "petitioner", "validator"] as UserRole[]
 )
   .map((role) => demoUsers.find((u) => u.role === role))
   .filter(Boolean) as DemoUser[];
