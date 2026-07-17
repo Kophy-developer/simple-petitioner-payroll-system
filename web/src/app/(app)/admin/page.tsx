@@ -47,7 +47,7 @@ export default function AdminPage() {
 
   const leads = users.filter((u) => u.role === "team_lead");
   const fieldWorkers = users.filter((u) =>
-    ["petitioner", "canvasser", "validator"].includes(u.role),
+    ["petitioner", "validator"].includes(u.role),
   );
   const activeLead = selectedLead || leads[0]?.id || "";
   const savedMembers = memberships

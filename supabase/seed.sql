@@ -53,7 +53,7 @@ select private.seed_user(
   'Casey'::text,
   'Nguyen'::text,
   'CN'::text,
-  'canvasser'::public.user_role,
+  'petitioner'::public.user_role,
   null::public.wage_currency,
   null::numeric,
   array['nevada']::text[]
