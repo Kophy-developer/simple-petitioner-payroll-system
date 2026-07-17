@@ -13,7 +13,12 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { roleLabel } from "@/lib/navigation";
 import { formatCurrency } from "@/lib/format";
-import { getBenchmark, listProfiles } from "@/lib/api/live";
+import {
+  getBenchmark,
+  listProfiles,
+  listTeamMemberships,
+  setTeamMembers,
+} from "@/lib/api/live";
 import type { DemoUser, UserRole, WageCurrency } from "@/lib/types";
 
 export default function AdminPage() {
@@ -32,14 +37,36 @@ export default function AdminPage() {
   const [role, setRole] = useState<UserRole>("petitioner");
   const [hourlyWage, setHourlyWage] = useState("");
   const [currency, setCurrency] = useState<WageCurrency>("USD");
+  const [memberships, setMemberships] = useState<
+    { leadId: string; memberId: string }[]
+  >([]);
+  const [selectedLead, setSelectedLead] = useState("");
+  const [draft, setDraft] = useState<{ lead: string; ids: string[] } | null>(null);
+  const [savingTeam, setSavingTeam] = useState(false);
+  const [teamMessage, setTeamMessage] = useState("");
+
+  const leads = users.filter((u) => u.role === "team_lead");
+  const fieldWorkers = users.filter((u) =>
+    ["petitioner", "canvasser", "validator"].includes(u.role),
+  );
+  const activeLead = selectedLead || leads[0]?.id || "";
+  const savedMembers = memberships
+    .filter((m) => m.leadId === activeLead)
+    .map((m) => m.memberId);
+  const memberSet = draft && draft.lead === activeLead ? draft.ids : savedMembers;
 
   async function load() {
     setLoading(true);
     setError("");
     try {
-      const [people, pct] = await Promise.all([listProfiles(), getBenchmark()]);
+      const [people, pct, teams] = await Promise.all([
+        listProfiles(),
+        getBenchmark(),
+        listTeamMemberships(),
+      ]);
       setUsers(people);
       setBenchmark(pct);
+      setMemberships(teams);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load admin data.");
     } finally {
@@ -50,6 +77,31 @@ export default function AdminPage() {
   useEffect(() => {
     void load();
   }, []);
+
+  function toggleMember(id: string) {
+    const next = memberSet.includes(id)
+      ? memberSet.filter((x) => x !== id)
+      : [...memberSet, id];
+    setDraft({ lead: activeLead, ids: next });
+  }
+
+  async function saveTeam() {
+    if (!activeLead) return;
+    setSavingTeam(true);
+    setError("");
+    setTeamMessage("");
+    try {
+      await setTeamMembers(activeLead, memberSet);
+      const teams = await listTeamMemberships();
+      setMemberships(teams);
+      setDraft(null);
+      setTeamMessage("Team updated.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not update team.");
+    } finally {
+      setSavingTeam(false);
+    }
+  }
 
   async function createUser(e: React.FormEvent) {
     e.preventDefault();
@@ -152,6 +204,87 @@ export default function AdminPage() {
               ))}
             </tbody>
           </DataTable>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardBody className="space-y-5">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Teams</p>
+            <h3 className="font-display text-xl text-ink">
+              Assign field workers to a team lead
+            </h3>
+            <p className="mt-1 text-sm text-ink/55">
+              Team leads see the ledger and dashboard for the members assigned here.
+            </p>
+          </div>
+          {leads.length === 0 ? (
+            <p className="text-sm text-ink/55">
+              Create a Team Lead user first to build a team.
+            </p>
+          ) : (
+            <>
+              <div className="max-w-sm space-y-2">
+                <Label>Team lead</Label>
+                <Select
+                  value={activeLead}
+                  onChange={(e) => setSelectedLead(e.target.value)}
+                >
+                  {leads.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.firstName} {l.lastName}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Members</Label>
+                {fieldWorkers.length === 0 ? (
+                  <p className="text-sm text-ink/55">No field workers available.</p>
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {fieldWorkers.map((w) => {
+                      const checked = memberSet.includes(w.id);
+                      return (
+                        <label
+                          key={w.id}
+                          className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-4 py-3 transition ${
+                            checked
+                              ? "border-brass/50 bg-brass/10"
+                              : "border-ink/10 bg-white/50 hover:border-brass/30"
+                          }`}
+                        >
+                          <span>
+                            <span className="block text-sm font-medium text-ink">
+                              {w.firstName} {w.lastName}
+                            </span>
+                            <span className="block text-xs text-ink/55">{w.email}</span>
+                          </span>
+                          <span className="flex items-center gap-2">
+                            <Badge tone="navy">{roleLabel(w.role)}</Badge>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleMember(w.id)}
+                              className="h-4 w-4 accent-brass"
+                            />
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <Button onClick={() => void saveTeam()} disabled={savingTeam}>
+                  {savingTeam ? "Saving…" : "Save team"}
+                </Button>
+                {teamMessage ? (
+                  <span className="text-sm text-success">{teamMessage}</span>
+                ) : null}
+              </div>
+            </>
+          )}
         </CardBody>
       </Card>
 

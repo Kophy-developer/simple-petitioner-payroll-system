@@ -193,6 +193,27 @@ export async function listProfiles() {
   return (data ?? []).map(mapProfile);
 }
 
+export async function listTeamMemberships() {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("team_memberships")
+    .select("lead_id, member_id");
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    leadId: row.lead_id as string,
+    memberId: row.member_id as string,
+  }));
+}
+
+export async function setTeamMembers(leadId: string, memberIds: string[]) {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("admin_set_team_members", {
+    p_lead_id: leadId,
+    p_member_ids: memberIds,
+  });
+  if (error) throw error;
+}
+
 export async function getProfile(userId: string) {
   const supabase = createClient();
   const { data, error } = await supabase
