@@ -8,7 +8,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { useDemoSession } from "@/lib/demo-session";
-import { canApproveLoans, canUploadValidity, canViewAllLedgers } from "@/lib/access";
+import { canApproveLoans, canUploadValidity, canViewAllLedgers, isFieldRole } from "@/lib/access";
 import { getNavForRole } from "@/lib/navigation";
 import { formatCurrency } from "@/lib/format";
 import {
@@ -37,7 +37,6 @@ export default function DashboardPage() {
   const [balance, setBalance] = useState<PayrollBalance>(emptyBalance);
   const [issueCount, setIssueCount] = useState(0);
   const [submissionCount, setSubmissionCount] = useState(0);
-  const [teamSubmissionCount, setTeamSubmissionCount] = useState(0);
   const [validityCount, setValidityCount] = useState(0);
   const [issuesAwaitingValidity, setIssuesAwaitingValidity] = useState(0);
 
@@ -47,7 +46,7 @@ export default function DashboardPage() {
       const bal = await getExpenseBalance(authUserId(user));
       setBalance(bal);
 
-      if (canViewAllLedgers(user.role) || user.role === "team_lead" || canUploadValidity(user.role)) {
+      if (canViewAllLedgers(user.role) || canUploadValidity(user.role)) {
         const [issues, submissions, validity] = await Promise.all([
           listIssues(),
           listSubmissions(),
@@ -59,16 +58,12 @@ export default function DashboardPage() {
         setIssuesAwaitingValidity(
           issues.filter((issue) => !validity.some((v) => v.issueId === issue.id)).length,
         );
-        if (user.role === "team_lead" && user.teamMemberIds?.length) {
-          const authIds = new Set(user.teamMemberIds);
-          setTeamSubmissionCount(submissions.filter((s) => authIds.has(s.userId)).length);
-        }
       }
 
       if (canApproveLoans(user.role)) {
         setPendingLoans(await countPendingLoans());
       }
-      if (canViewAllLedgers(user.role) || user.role === "team_lead") {
+      if (canViewAllLedgers(user.role)) {
         const negative = await listNegativeBalanceUsers();
         setNegativeCount(negative.length);
       }
@@ -92,7 +87,7 @@ export default function DashboardPage() {
     canViewAllLedgers(user.role) && negativeCount > 0
       ? { label: `${negativeCount} circulator(s) with negative balance`, href: "/payroll", tone: "danger" as const }
       : null,
-    balance.liveBalance < 0 && (user.role === "petitioner" || user.role === "canvasser")
+    balance.liveBalance < 0 && isFieldRole(user.role)
       ? { label: "Your live balance is negative", href: "/payroll", tone: "danger" as const }
       : null,
   ].filter(Boolean) as { label: string; href: string; tone: "warning" | "danger" }[];
@@ -106,7 +101,7 @@ export default function DashboardPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {canViewAllLedgers(user.role) || user.role === "team_lead" ? (
+        {canViewAllLedgers(user.role) ? (
           <>
             <StatCard label="Open issues" value={String(issueCount)} />
             <StatCard label="Submissions" value={String(submissionCount)} />
@@ -116,9 +111,7 @@ export default function DashboardPage() {
                 value={String(pendingLoans)}
                 tone={pendingLoans ? "warning" : "default"}
               />
-            ) : (
-              <StatCard label="Team submissions" value={String(teamSubmissionCount)} />
-            )}
+            ) : null}
             <StatCard
               label="Negative balances"
               value={String(negativeCount)}
@@ -128,7 +121,7 @@ export default function DashboardPage() {
           </>
         ) : null}
 
-        {user.role === "petitioner" || user.role === "canvasser" ? (
+        {isFieldRole(user.role) ? (
           <>
             <StatCard
               label="Live balance"

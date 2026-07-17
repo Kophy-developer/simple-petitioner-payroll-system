@@ -13,6 +13,7 @@ import { DataTable, Td, Th } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { expenseTypeLabels } from "@/lib/demo-data";
 import { useDemoSession } from "@/lib/demo-session";
+import { canRunPayroll, isFieldRole } from "@/lib/access";
 import { formatCurrency, formatDate } from "@/lib/format";
 import {
   authUserId,
@@ -40,7 +41,7 @@ export default function PayrollPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const lockedToSelf = user?.role === "petitioner" || user?.role === "canvasser";
+  const lockedToSelf = user ? isFieldRole(user.role) : false;
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -167,9 +168,11 @@ export default function PayrollPage() {
           </DataTable>
         </CardBody>
       </Card>
-      <Link href="/payroll/monthly" className="text-sm text-civic-navy hover:underline">
-        Monthly payroll generation
-      </Link>
+      {canRunPayroll(user.role) ? (
+        <Link href="/payroll/monthly" className="text-sm text-civic-navy hover:underline">
+          Monthly payroll generation
+        </Link>
+      ) : null}
     </div>
   );
 }

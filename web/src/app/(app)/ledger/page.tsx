@@ -12,7 +12,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DataTable, Td, Th } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { useDemoSession } from "@/lib/demo-session";
-import { canViewAllLedgers, canViewTeamData } from "@/lib/access";
+import { canViewAllLedgers, isFieldRole } from "@/lib/access";
 import { payModelLabel } from "@/lib/payroll";
 import { formatCurrency, formatDateTime, formatPercent } from "@/lib/format";
 import {
@@ -28,7 +28,7 @@ import type { DemoUser, Issue, LedgerRow } from "@/lib/types";
 const PAGE_SIZE = 50;
 
 function canUseOverview(role: DemoUser["role"]) {
-  return canViewAllLedgers(role) || canViewTeamData(role);
+  return canViewAllLedgers(role);
 }
 
 function LedgerContent() {
@@ -81,7 +81,7 @@ function LedgerContent() {
 
   const loadMeta = useCallback(async () => {
     if (!user) return [] as DemoUser[];
-    const locked = user.role === "petitioner" || user.role === "canvasser";
+    const locked = isFieldRole(user.role);
     const [people, issueRows] = await Promise.all([
       locked ? Promise.resolve([user]) : listProfiles(),
       listIssues(),
@@ -124,7 +124,7 @@ function LedgerContent() {
     setError("");
     try {
       const picker = await loadMeta();
-      const locked = user.role === "petitioner" || user.role === "canvasser";
+      const locked = isFieldRole(user.role);
       const target = locked
         ? authUserId(user)
         : queryUser && picker.some((p) => p.id === queryUser)
