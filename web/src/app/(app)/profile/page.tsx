@@ -108,10 +108,6 @@ export default function ProfilePage() {
                 </div>
               ) : null}
             </div>
-            <p className="text-xs text-ink/50">
-              Signed in via Supabase as {userDisplayName(user)}
-              {user.authId ? ` · ${user.authId.slice(0, 8)}…` : ""}
-            </p>
           </CardBody>
         </Card>
       </form>
