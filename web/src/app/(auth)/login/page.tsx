@@ -12,25 +12,55 @@ import { roleLabel } from "@/lib/navigation";
 import { userDisplayName } from "@/lib/access";
 import { demoPassword } from "@/lib/demo-data";
 
+type Mode = "password" | "otp";
+
 export default function LoginPage() {
-  const { signIn } = useDemoSession();
-  const [email, setEmail] = useState("");
+  const { signIn, requestEmployeeOtp, verifyEmployeeOtp } = useDemoSession();
+  const [mode, setMode] = useState<Mode>("password");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpHint, setOtpHint] = useState("");
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setEmail(roleDemoUsers[3]?.email ?? "");
+    setIdentifier(roleDemoUsers[3]?.email ?? "");
     setPassword(demoPassword);
     setReady(true);
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const result = await signIn(email, password);
+    const result = await signIn(identifier, password);
+    if (result.error) setError(result.error);
+    setLoading(false);
+  }
+
+  async function handleSendOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const result = await requestEmployeeOtp(identifier);
+      setOtpSent(true);
+      setOtpHint(result.email);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send code.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    const result = await verifyEmployeeOtp(identifier, otpCode);
     if (result.error) setError(result.error);
     setLoading(false);
   }
@@ -55,41 +85,111 @@ export default function LoginPage() {
             <p className="text-xs uppercase tracking-[0.25em] text-civic-navy">Welcome back</p>
             <h2 className="mt-2 font-display text-3xl text-ink">Sign in</h2>
           </div>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="username"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                suppressHydrationWarning
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <Link href="/forgot-password" className="text-xs font-medium text-civic-navy hover:underline">Forgot password?</Link>
-              </div>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                suppressHydrationWarning
-              />
-            </div>
-            {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
-            <Button type="submit" className="w-full" disabled={loading || !ready}>
-              {loading ? "Signing in..." : "Sign in"}
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={mode === "password" ? "primary" : "ghost"}
+              onClick={() => {
+                setMode("password");
+                setError("");
+                setOtpSent(false);
+              }}
+            >
+              Email / ID + password
             </Button>
-          </form>
+            <Button
+              type="button"
+              size="sm"
+              variant={mode === "otp" ? "primary" : "ghost"}
+              onClick={() => {
+                setMode("otp");
+                setError("");
+              }}
+            >
+              Employee ID + code
+            </Button>
+          </div>
+
+          {mode === "password" ? (
+            <form onSubmit={(e) => void handlePasswordSubmit(e)} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="identifier">Email or employee ID</Label>
+                <Input
+                  id="identifier"
+                  name="identifier"
+                  autoComplete="username"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  required
+                  suppressHydrationWarning
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Link href="/forgot-password" className="text-xs font-medium text-civic-navy hover:underline">Forgot password?</Link>
+                </div>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  suppressHydrationWarning
+                />
+              </div>
+              {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
+              <Button type="submit" className="w-full" disabled={loading || !ready}>
+                {loading ? "Signing in..." : "Sign in"}
+              </Button>
+            </form>
+          ) : (
+            <form
+              onSubmit={(e) => void (otpSent ? handleVerifyOtp(e) : handleSendOtp(e))}
+              className="space-y-4"
+            >
+              <div className="space-y-2">
+                <Label htmlFor="employee-id">Employee ID</Label>
+                <Input
+                  id="employee-id"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  required
+                  placeholder="BAP-000001"
+                />
+              </div>
+              {otpSent ? (
+                <div className="space-y-2">
+                  <Label htmlFor="otp">Email code</Label>
+                  <Input
+                    id="otp"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
+                    required
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                  />
+                  <p className="text-xs text-ink/55">
+                    Code sent to {otpHint || "your email"}. SMS via Twilio activates when keys are configured.
+                  </p>
+                </div>
+              ) : null}
+              {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
+              <Button type="submit" className="w-full" disabled={loading || !ready}>
+                {loading
+                  ? otpSent
+                    ? "Verifying..."
+                    : "Sending..."
+                  : otpSent
+                    ? "Verify code"
+                    : "Send code"}
+              </Button>
+            </form>
+          )}
+
           <div className="space-y-3 border-t border-ink/10 pt-5">
             <p className="text-xs font-medium uppercase tracking-[0.2em] text-ink/45">Quick demo access</p>
             <div className="grid gap-2">
@@ -98,7 +198,8 @@ export default function LoginPage() {
                   key={user.id}
                   type="button"
                   onClick={() => {
-                    setEmail(user.email);
+                    setMode("password");
+                    setIdentifier(user.email);
                     setPassword(demoPassword);
                   }}
                   className="flex items-center justify-between rounded-xl border border-ink/10 bg-parchment/50 px-4 py-3 text-left transition hover:border-brass/40 hover:bg-white"

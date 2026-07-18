@@ -45,6 +45,9 @@ function mapProfile(row: {
   wage_currency: WageCurrency | null;
   hourly_wage: number | null;
   profile_tags: string[] | null;
+  employee_id?: string | null;
+  phone?: string | null;
+  sub_account_id?: string | null;
 }): DemoUser {
   return {
     id: row.id,
@@ -59,6 +62,9 @@ function mapProfile(row: {
     roleCategoryIds: [],
     wageCurrency: row.wage_currency ?? undefined,
     hourlyWage: row.hourly_wage ?? undefined,
+    employeeId: row.employee_id,
+    phone: row.phone,
+    subAccountId: row.sub_account_id,
   };
 }
 
@@ -186,7 +192,7 @@ export async function listProfiles() {
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags",
+      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags, employee_id, phone, sub_account_id",
     )
     .order("last_name");
   if (error) throw error;
@@ -219,7 +225,7 @@ export async function getProfile(userId: string) {
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags",
+      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags, employee_id, phone, sub_account_id",
     )
     .eq("id", userId)
     .maybeSingle();
@@ -317,6 +323,8 @@ export async function createExpense(input: {
   issueId?: string | null;
   receiptPath?: string | null;
   userId?: string | null;
+  tollsAmount?: number | null;
+  carActive?: boolean | null;
 }) {
   const supabase = createClient();
   const { data, error } = await supabase.rpc("create_expense", {
@@ -327,6 +335,8 @@ export async function createExpense(input: {
     p_issue_id: input.issueId ?? null,
     p_receipt_path: input.receiptPath ?? null,
     p_user_id: input.userId ?? null,
+    p_tolls_amount: input.tollsAmount ?? 0,
+    p_car_active: input.carActive ?? false,
   });
   if (error) throw error;
   return mapExpense(data);

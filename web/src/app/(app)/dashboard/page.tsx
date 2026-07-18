@@ -8,7 +8,13 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { useDemoSession } from "@/lib/demo-session";
-import { canApproveLoans, canUploadValidity, canViewAllLedgers, isFieldRole } from "@/lib/access";
+import {
+  canApproveLoans,
+  canRunPayroll,
+  canUploadValidity,
+  canViewAllLedgers,
+  isFieldRole,
+} from "@/lib/access";
 import { getNavForRole } from "@/lib/navigation";
 import { formatCurrency } from "@/lib/format";
 import {
@@ -148,14 +154,14 @@ export default function DashboardPage() {
         ) : null}
       </div>
 
-      {canViewAllLedgers(user.role) ? (
+      {canRunPayroll(user.role) ? (
         <Link
-          href="/payroll/monthly"
+          href="/payments"
           className="flex items-center justify-between rounded-2xl border border-brass/30 bg-brass/10 px-5 py-4 transition hover:bg-brass/15"
         >
           <div>
-            <p className="text-sm font-medium text-ink">Monthly payroll generation</p>
-            <p className="text-xs text-ink/55">Preview, generate, and lock payroll records</p>
+            <p className="text-sm font-medium text-ink">Payments & disbursements</p>
+            <p className="text-xs text-ink/55">Record paystubs, advances, and funds-hit dates anytime</p>
           </div>
           <ArrowRight size={16} className="text-ink/40" />
         </Link>

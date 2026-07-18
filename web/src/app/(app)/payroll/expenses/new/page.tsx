@@ -38,6 +38,8 @@ export default function NewExpensePage() {
   const [error, setError] = useState("");
   const [suggested, setSuggested] = useState<number | undefined>();
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [tollsAmount, setTollsAmount] = useState("0");
+  const [carActive, setCarActive] = useState(true);
 
   const usesRange = rangeTypes.includes(type);
   const labels = rangeLabels(type);
@@ -105,6 +107,8 @@ export default function NewExpensePage() {
         endDate: usesRange ? endDate : null,
         issueId: issueId || null,
         receiptPath,
+        tollsAmount: type === "car_rental" ? parseFloat(tollsAmount) || 0 : 0,
+        carActive: type === "car_rental" ? carActive : false,
       });
       setSaved(true);
       setTimeout(() => {
@@ -231,6 +235,33 @@ export default function NewExpensePage() {
               <p className="text-xs text-ink/50">
                 {labels.end} can be the same day as {labels.start.toLowerCase()}, but not earlier.
               </p>
+            ) : null}
+
+            {type === "car_rental" ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="tolls">Tolls</Label>
+                  <Input
+                    id="tolls"
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    value={tollsAmount}
+                    onChange={(e) => setTollsAmount(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="car-active">Active in Field Ops</Label>
+                  <Select
+                    id="car-active"
+                    value={carActive ? "yes" : "no"}
+                    onChange={(e) => setCarActive(e.target.value === "yes")}
+                  >
+                    <option value="yes">Yes — show on Field Ops</option>
+                    <option value="no">No</option>
+                  </Select>
+                </div>
+              </div>
             ) : null}
 
             <div className="space-y-2">

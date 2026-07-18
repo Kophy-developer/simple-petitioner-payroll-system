@@ -169,6 +169,7 @@ export default function AdminPage() {
             <thead>
               <tr>
                 <Th>Name</Th>
+                <Th>Employee ID</Th>
                 <Th>Email</Th>
                 <Th>Role</Th>
                 <Th>Status</Th>
@@ -183,12 +184,23 @@ export default function AdminPage() {
                   <Td>
                     {u.firstName} {u.lastName}
                   </Td>
+                  <Td>{u.employeeId ?? "—"}</Td>
                   <Td>{u.email}</Td>
                   <Td>
                     <Badge tone="navy">{roleLabel(u.role)}</Badge>
                   </Td>
                   <Td>
-                    <Badge tone={u.status === "active" ? "success" : "warning"}>{u.status}</Badge>
+                    <Badge
+                      tone={
+                        u.status === "active"
+                          ? "success"
+                          : u.status === "offboarded"
+                            ? "danger"
+                            : "warning"
+                      }
+                    >
+                      {u.status}
+                    </Badge>
                   </Td>
                   <Td>{u.hourlyWage ? formatCurrency(u.hourlyWage) : "—"}</Td>
                   <Td>{u.wageCurrency ?? "—"}</Td>

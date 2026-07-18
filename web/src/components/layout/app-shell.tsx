@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { LogOut, Menu, User, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/layout/logo";
+import { OffboardFab } from "@/components/layout/offboard-fab";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { useDemoSession } from "@/lib/demo-session";
@@ -178,6 +179,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">{children}</div>
         </main>
       </div>
+      <OffboardFab />
     </div>
   );
 }

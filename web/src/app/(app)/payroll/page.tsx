@@ -169,8 +169,8 @@ export default function PayrollPage() {
         </CardBody>
       </Card>
       {canRunPayroll(user.role) ? (
-        <Link href="/payroll/monthly" className="text-sm text-civic-navy hover:underline">
-          Monthly payroll generation
+        <Link href="/payments" className="text-sm text-civic-navy hover:underline">
+          Payments & disbursements
         </Link>
       ) : null}
     </div>

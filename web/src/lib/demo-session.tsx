@@ -17,7 +17,9 @@ type SessionContextValue = {
   user: DemoUser | null;
   isLoading: boolean;
   authReady: boolean;
-  signIn: (email: string, password: string) => Promise<{ error?: string }>;
+  signIn: (identifier: string, password: string) => Promise<{ error?: string }>;
+  requestEmployeeOtp: (employeeId: string) => Promise<{ email: string }>;
+  verifyEmployeeOtp: (employeeId: string, token: string) => Promise<{ error?: string }>;
   signOut: () => void;
   switchRole: (role: UserRole) => void;
   updateUser: (patch: Partial<DemoUser>) => Promise<void>;
@@ -34,6 +36,9 @@ type ProfileRow = {
   wage_currency: WageCurrency | null;
   hourly_wage: number | null;
   profile_tags: string[] | null;
+  employee_id?: string | null;
+  phone?: string | null;
+  sub_account_id?: string | null;
 };
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -66,7 +71,24 @@ function mapProfile(
     hourlyWage: profile.hourly_wage ?? undefined,
     teamMemberIds: teamMemberIds.length ? teamMemberIds : bridge?.teamMemberIds,
     authId: profile.id,
+    employeeId: profile.employee_id,
+    phone: profile.phone,
+    subAccountId: profile.sub_account_id,
   };
+}
+
+async function resolveLoginEmail(identifier: string) {
+  const supabase = createClient();
+  const trimmed = identifier.trim();
+  if (trimmed.includes("@")) return trimmed.toLowerCase();
+  const { data, error } = await supabase.rpc("lookup_user_for_login", {
+    p_identifier: trimmed,
+  });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.email) throw new Error("No account found for that employee ID.");
+  if (row.status === "offboarded") throw new Error("This account has been offboarded.");
+  return String(row.email).toLowerCase();
 }
 
 async function fetchSessionUser(): Promise<DemoUser | null> {
@@ -79,12 +101,16 @@ async function fetchSessionUser(): Promise<DemoUser | null> {
   const { data: profile, error } = await supabase
     .from("profiles")
     .select(
-      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags",
+      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags, employee_id, phone, sub_account_id",
     )
     .eq("id", session.user.id)
     .maybeSingle();
 
   if (error || !profile) return null;
+  if (profile.status === "offboarded") {
+    await supabase.auth.signOut();
+    return null;
+  }
 
   const { data: memberships } = await supabase
     .from("team_memberships")
@@ -155,32 +181,83 @@ export function DemoSessionProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const signIn = useCallback(
-    async (email: string, password: string) => {
+    async (identifier: string, password: string) => {
       const supabase = createClient();
       setIsLoading(true);
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
-      });
+      try {
+        const email = await resolveLoginEmail(identifier);
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-      if (error) {
+        if (error) {
+          setIsLoading(false);
+          return { error: "Invalid email, employee ID, or password." };
+        }
+
+        const next = await fetchSessionUser();
+        if (!next) {
+          await supabase.auth.signOut();
+          setIsLoading(false);
+          return { error: "Account profile is missing or offboarded." };
+        }
+
+        setUser(next);
         setIsLoading(false);
-        return { error: "Invalid email or password." };
-      }
-
-      const next = await fetchSessionUser();
-      if (!next) {
-        await supabase.auth.signOut();
+        setAuthReady(true);
+        router.replace("/dashboard");
+        return {};
+      } catch (e) {
         setIsLoading(false);
-        return { error: "Account profile is missing. Ask an admin to finish setup." };
+        return { error: e instanceof Error ? e.message : "Could not sign in." };
       }
+    },
+    [router],
+  );
 
-      setUser(next);
-      setIsLoading(false);
-      setAuthReady(true);
-      router.replace("/dashboard");
-      return {};
+  const requestEmployeeOtp = useCallback(async (employeeId: string) => {
+    const supabase = createClient();
+    const email = await resolveLoginEmail(employeeId);
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false },
+    });
+    if (error) throw error;
+    return { email };
+  }, []);
+
+  const verifyEmployeeOtp = useCallback(
+    async (employeeId: string, token: string) => {
+      const supabase = createClient();
+      setIsLoading(true);
+      try {
+        const email = await resolveLoginEmail(employeeId);
+        const { error } = await supabase.auth.verifyOtp({
+          email,
+          token: token.trim(),
+          type: "email",
+        });
+        if (error) {
+          setIsLoading(false);
+          return { error: "Invalid or expired code." };
+        }
+        const next = await fetchSessionUser();
+        if (!next) {
+          await supabase.auth.signOut();
+          setIsLoading(false);
+          return { error: "Account profile is missing or offboarded." };
+        }
+        setUser(next);
+        setIsLoading(false);
+        setAuthReady(true);
+        router.replace("/dashboard");
+        return {};
+      } catch (e) {
+        setIsLoading(false);
+        return { error: e instanceof Error ? e.message : "Could not verify code." };
+      }
     },
     [router],
   );
@@ -232,8 +309,28 @@ export function DemoSessionProvider({ children }: { children: React.ReactNode })
   );
 
   const value = useMemo(
-    () => ({ user, isLoading, authReady, signIn, signOut, switchRole, updateUser }),
-    [user, isLoading, authReady, signIn, signOut, switchRole, updateUser],
+    () => ({
+      user,
+      isLoading,
+      authReady,
+      signIn,
+      requestEmployeeOtp,
+      verifyEmployeeOtp,
+      signOut,
+      switchRole,
+      updateUser,
+    }),
+    [
+      user,
+      isLoading,
+      authReady,
+      signIn,
+      requestEmployeeOtp,
+      verifyEmployeeOtp,
+      signOut,
+      switchRole,
+      updateUser,
+    ],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

@@ -131,6 +131,7 @@ export const expenseTypeLabels: Record<Expense["type"], string> = {
   health: "Health",
   car_rental: "Car Rental",
   housing: "Housing",
+  flight: "Flight",
   other: "Other",
 };
 

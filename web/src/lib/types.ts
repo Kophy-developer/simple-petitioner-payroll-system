@@ -8,7 +8,7 @@ export type UserRole =
 
 export type PayModel = "validity_standard" | "per_valid_sig";
 export type WageCurrency = "USD" | "PHP";
-export type UserStatus = "active" | "inactive";
+export type UserStatus = "active" | "inactive" | "offboarded";
 export type LoanStatus = "pending" | "approved" | "rejected" | "auto_rejected";
 export type ExpenseType =
   | "upfront_draw"
@@ -17,9 +17,32 @@ export type ExpenseType =
   | "health"
   | "car_rental"
   | "housing"
+  | "flight"
   | "other";
 export type PayrollRecordStatus = "draft" | "locked";
 export type ExpenseConfigType = "standard" | "per_issue";
+export type PaymentBucket =
+  | "payroll"
+  | "chargebacks"
+  | "loans_advances"
+  | "hotel_expense"
+  | "reimburse"
+  | "paid";
+export type PaymentEventType =
+  | "onpay"
+  | "cashapp"
+  | "full_pay"
+  | "upfront"
+  | "validity_hold"
+  | "expenses"
+  | "housing"
+  | "lodging"
+  | "bonus"
+  | "advances"
+  | "flight_advance"
+  | "paid"
+  | "other";
+export type LodgingKind = "airbnb" | "hotel";
 
 export type DemoUser = {
   id: string;
@@ -35,6 +58,10 @@ export type DemoUser = {
   hourlyWage?: number;
   teamMemberIds?: string[];
   authId?: string;
+  employeeId?: string | null;
+  phone?: string | null;
+  subAccountId?: string | null;
+  subAccountCode?: string | null;
 };
 
 export type Petition = {
@@ -155,4 +182,107 @@ export type MonthlyPayrollRecord = {
 export type ExpenseConfig = {
   carRental: { type: ExpenseConfigType; rate: number; issueRates: { issueId: string; rate: number }[] };
   housing: { type: ExpenseConfigType; rate: number; issueRates: { issueId: string; rate: number }[] };
+};
+
+export type SubAccount = {
+  id: string;
+  code: string;
+  name: string;
+  isPrimary: boolean;
+};
+
+export type PricedPetitionLine = {
+  id: string;
+  petitionId: string | null;
+  name: string;
+  code: string;
+  pay: number;
+  lotusPay: number;
+};
+
+export type TurnIn = {
+  id: string;
+  turnInNumber: string;
+  name: string;
+  state: string;
+  turnInDate: string | null;
+  benchmarkPct: number;
+};
+
+export type TurnInColumn = {
+  id: string;
+  turnInId: string;
+  pricedLineId: string;
+  code: string;
+  pay: number;
+  lotusPay: number;
+  sortOrder: number;
+  benchmarkPct: number | null;
+};
+
+export type TurnInEntry = {
+  id: string;
+  turnInId: string;
+  columnId: string;
+  userId: string;
+  sigs: number;
+  books: number;
+};
+
+export type LedgerLine = {
+  id: string;
+  userId: string;
+  turnInId: string;
+  columnId: string;
+  sigs: number;
+  pay: number;
+  estimatedPay: number;
+  dups: number | null;
+  usable: number | null;
+  valid: number | null;
+  validityPercent: number | null;
+  payRate: number;
+  payable: number | null;
+  totalPay: number | null;
+  upfront: number | null;
+  hold: number | null;
+  benchmarkPct: number;
+  validityPending: boolean;
+};
+
+export type PaymentEvent = {
+  id: string;
+  userId: string;
+  bucket: PaymentBucket;
+  eventType: PaymentEventType;
+  amount: number;
+  notes: string | null;
+  receiptPath: string | null;
+  eventDate: string;
+  paidAt: string | null;
+  fundsHitAt: string | null;
+  loanId: string | null;
+};
+
+export type LodgingProperty = {
+  id: string;
+  kind: LodgingKind;
+  name: string;
+  address: string | null;
+  dailyTotal: number | null;
+  roomCount: number | null;
+  roomRate: number | null;
+};
+
+export type LodgingOccupancy = {
+  id: string;
+  propertyId: string;
+  userId: string;
+  roomNumber: string;
+  occupantsInRoom: number;
+  checkInAt: string;
+  checkOutAt: string | null;
+  checkOutDate: string | null;
+  checkOutBackdated: boolean;
+  dailyAmount: number | null;
 };

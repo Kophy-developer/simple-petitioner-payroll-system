@@ -23,7 +23,8 @@ import {
   listProfiles,
   type LedgerOverviewRow,
 } from "@/lib/api/live";
-import type { DemoUser, Issue, LedgerRow } from "@/lib/types";
+import { listLedgerLines, listTurnIns } from "@/lib/api/remodel";
+import type { DemoUser, Issue, LedgerLine, LedgerRow, TurnIn } from "@/lib/types";
 
 const PAGE_SIZE = 50;
 
@@ -55,6 +56,8 @@ function LedgerContent() {
   const [profiles, setProfiles] = useState<DemoUser[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [rows, setRows] = useState<LedgerRow[]>([]);
+  const [turnInLines, setTurnInLines] = useState<LedgerLine[]>([]);
+  const [turnIns, setTurnIns] = useState<TurnIn[]>([]);
   const [overview, setOverview] = useState<LedgerOverviewRow[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedId, setSelectedId] = useState("");
@@ -132,10 +135,18 @@ function LedgerContent() {
           : picker[0]?.id ?? authUserId(user);
 
       setSelectedId(target);
-      setRows(await listLedger(target));
+      const [legacyRows, lines, turnInRows] = await Promise.all([
+        listLedger(target),
+        listLedgerLines(target),
+        listTurnIns(),
+      ]);
+      setRows(legacyRows);
+      setTurnInLines(lines);
+      setTurnIns(turnInRows);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load ledger.");
       setRows([]);
+      setTurnInLines([]);
     } finally {
       setLoading(false);
     }
@@ -409,10 +420,64 @@ function LedgerContent() {
               </button>
             ) : null}
           </div>
-          {Object.keys(grouped).length === 0 && !loading ? (
+          {Object.keys(grouped).length === 0 && turnInLines.length === 0 && !loading ? (
             <Card>
               <CardBody>
                 <p className="text-sm text-ink/55">No ledger rows for this user yet.</p>
+              </CardBody>
+            </Card>
+          ) : null}
+
+          {turnInLines.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <h3 className="font-display text-xl text-ink">Turn-in ledger (CO)</h3>
+                <p className="mt-1 text-sm text-ink/55">
+                  Excel For Ledgers columns: Dupes / Usable / Valid / Pay rate / Payable / Upfront / Hold
+                </p>
+              </CardHeader>
+              <CardBody className="p-0">
+                <DataTable>
+                  <thead>
+                    <tr>
+                      <Th>Turn-in</Th>
+                      <Th align="right">SIGs</Th>
+                      <Th align="right">Pay</Th>
+                      <Th align="right">Est.</Th>
+                      <Th align="right">DUPs</Th>
+                      <Th align="right">Usable</Th>
+                      <Th align="right">Valid</Th>
+                      <Th align="right">Validity%</Th>
+                      <Th align="right">Pay rate</Th>
+                      <Th align="right">Payable</Th>
+                      <Th align="right">Total</Th>
+                      <Th align="right">Upfront</Th>
+                      <Th align="right">Hold</Th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-ink/8 bg-white/50">
+                    {turnInLines.map((line) => {
+                      const turnIn = turnIns.find((t) => t.id === line.turnInId);
+                      return (
+                        <tr key={line.id}>
+                          <Td>{turnIn?.turnInNumber ?? "—"}</Td>
+                          <Td align="right">{line.sigs}</Td>
+                          <Td align="right">{formatCurrency(line.pay)}</Td>
+                          <Td align="right">{formatCurrency(line.estimatedPay)}</Td>
+                          <Td align="right">{line.dups ?? "—"}</Td>
+                          <Td align="right">{line.usable ?? "—"}</Td>
+                          <Td align="right">{line.valid ?? "—"}</Td>
+                          <Td align="right">{formatPercent(line.validityPercent)}</Td>
+                          <Td align="right">{line.payRate.toFixed(4)}</Td>
+                          <Td align="right">{line.payable ?? "—"}</Td>
+                          <Td align="right">{formatCurrency(line.totalPay)}</Td>
+                          <Td align="right">{formatCurrency(line.upfront)}</Td>
+                          <Td align="right">{formatCurrency(line.hold)}</Td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </DataTable>
               </CardBody>
             </Card>
           ) : null}

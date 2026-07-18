@@ -20,7 +20,10 @@ import {
   reviewLoan,
   type PayrollBalance,
 } from "@/lib/api/live";
-import type { DemoUser, LoanRequest, LoanStatus } from "@/lib/types";
+import { createPaymentEvent, listPaymentEvents, uploadPaymentReceipt } from "@/lib/api/remodel";
+import type { DemoUser, LoanRequest, LoanStatus, PaymentEvent } from "@/lib/types";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 function statusTone(s: LoanStatus): "default" | "success" | "warning" | "danger" {
   if (s === "approved") return "success";
@@ -48,6 +51,9 @@ export default function LoanDetailPage({ params }: { params: Promise<{ id: strin
   const [acting, setActing] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [paidEvent, setPaidEvent] = useState<PaymentEvent | null>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [fundsHitAt, setFundsHitAt] = useState("");
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -66,12 +72,14 @@ export default function LoanDetailPage({ params }: { params: Promise<{ id: strin
         return;
       }
       setRequest(loan);
-      const [profile, bal] = await Promise.all([
+      const [profile, bal, events] = await Promise.all([
         getProfile(loan.userId),
         getExpenseBalance(loan.userId),
+        listPaymentEvents(loan.userId),
       ]);
       setRequester(profile);
       setBalance(bal);
+      setPaidEvent(events.find((e) => e.loanId === loan.id) ?? null);
       if (loan.reviewedBy) {
         const reviewer = await getProfile(loan.reviewedBy);
         setReviewerName(reviewer ? `${reviewer.firstName} ${reviewer.lastName}` : "");
@@ -118,6 +126,36 @@ export default function LoanDetailPage({ params }: { params: Promise<{ id: strin
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not update request.");
+    } finally {
+      setActing(false);
+    }
+  }
+
+  async function markPaid() {
+    if (!request || !receiptFile) {
+      setError("Receipt is required to mark an advance paid.");
+      return;
+    }
+    setActing(true);
+    setError("");
+    setMessage("");
+    try {
+      const receiptPath = await uploadPaymentReceipt(request.userId, receiptFile);
+      await createPaymentEvent({
+        userId: request.userId,
+        bucket: "loans_advances",
+        eventType: "advances",
+        amount: request.amount,
+        notes: `Advance payment for loan ${request.id}`,
+        receiptPath,
+        fundsHitAt: fundsHitAt || null,
+        loanId: request.id,
+      });
+      setMessage("Advance marked paid with receipt.");
+      setReceiptFile(null);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not record payment.");
     } finally {
       setActing(false);
     }
@@ -199,6 +237,42 @@ export default function LoanDetailPage({ params }: { params: Promise<{ id: strin
                   Reject
                 </Button>
               </div>
+            ) : null}
+
+            {isApprover && request.status === "approved" && !paidEvent ? (
+              <div className="space-y-3 border-t border-ink/10 pt-5">
+                <p className="text-sm text-ink/70">
+                  Approved is not paid. Attach a receipt to log the disbursement.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="loan-receipt">Receipt</Label>
+                  <Input
+                    id="loan-receipt"
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="loan-funds-hit">Funds hit account</Label>
+                  <Input
+                    id="loan-funds-hit"
+                    type="date"
+                    value={fundsHitAt}
+                    onChange={(e) => setFundsHitAt(e.target.value)}
+                  />
+                </div>
+                <Button disabled={acting || !receiptFile} onClick={() => void markPaid()}>
+                  {acting ? "Saving…" : "Mark paid"}
+                </Button>
+              </div>
+            ) : null}
+
+            {paidEvent ? (
+              <p className="rounded-xl bg-success/10 px-4 py-3 text-sm text-success">
+                Paid via payment event on {paidEvent.eventDate}
+                {paidEvent.fundsHitAt ? ` · funds hit ${paidEvent.fundsHitAt}` : ""}.
+              </p>
             ) : null}
 
             {message ? (
