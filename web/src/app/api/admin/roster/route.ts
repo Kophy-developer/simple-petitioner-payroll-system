@@ -20,7 +20,28 @@ function tempPassword() {
 }
 
 function provisionalEmail(employeeId: string) {
-  return `${employeeId}@id.ballotaccesspros.internal`;
+  const from = process.env.EMAIL_FROM?.trim();
+  const domain = from?.includes("@") ? from.split("@")[1] : null;
+  if (domain) return `employee.${employeeId}@${domain}`;
+  return `employee.${employeeId}@ballotaccesspros.com`;
+}
+
+function formatErr(err: unknown): string {
+  if (!err) return "Unknown error";
+  if (typeof err === "string") return err;
+  if (err instanceof Error && err.message && err.message !== "{}") return err.message;
+  const e = err as Record<string, unknown>;
+  for (const key of ["message", "msg", "error_description", "details", "hint", "error"]) {
+    const value = e[key];
+    if (typeof value === "string" && value.trim() && value !== "{}") return value;
+  }
+  try {
+    const raw = JSON.stringify(err);
+    if (raw && raw !== "{}") return raw;
+  } catch {
+    /* ignore */
+  }
+  return "Unknown error";
 }
 
 export async function POST(request: Request) {
@@ -76,7 +97,7 @@ export async function POST(request: Request) {
     const row = rows[i];
     const firstName = row.firstName?.trim() ?? "";
     const lastName = row.lastName?.trim() ?? "";
-    const initials = (row.initials?.trim() ?? "").toUpperCase();
+    let initials = (row.initials?.trim() ?? "").toUpperCase();
     const roleRaw = (row.role ?? "petitioner").toLowerCase();
     const allowed: UserRole[] = [
       "super_admin",
@@ -90,18 +111,34 @@ export async function POST(request: Request) {
       : "petitioner";
 
     if (!firstName || !lastName || !initials) {
-      errors.push({ row: i + 1, message: "First name, last name, and initials are required." });
+      errors.push({
+        row: i + 1,
+        message: `First name, last name, and initials are required (got "${firstName}" / "${lastName}" / "${initials}"). Check Excel headers: First Name, Last Name, Initials.`,
+      });
       continue;
     }
 
-    const { data: employeeId, error: idErr } = await admin.rpc("next_employee_id");
-    if (idErr || !employeeId) {
-      errors.push({ row: i + 1, message: idErr?.message ?? "Could not allocate employee ID." });
+    const { data: employeeIdRaw, error: idErr } = await admin.rpc("next_employee_id");
+    if (idErr || employeeIdRaw == null || employeeIdRaw === "") {
+      errors.push({
+        row: i + 1,
+        message: `Could not allocate employee ID: ${formatErr(idErr)}`,
+      });
       continue;
+    }
+    const employeeId = String(employeeIdRaw);
+
+    const { data: taken } = await admin
+      .from("profiles")
+      .select("id, first_name, last_name")
+      .eq("initials", initials)
+      .maybeSingle();
+    if (taken) {
+      initials = `${initials}${employeeId.slice(-2)}`.slice(0, 8);
     }
 
     const password = tempPassword();
-    const email = provisionalEmail(String(employeeId));
+    const email = provisionalEmail(employeeId);
 
     const { data, error } = await admin.auth.admin.createUser({
       email,
@@ -117,7 +154,10 @@ export async function POST(request: Request) {
     });
 
     if (error || !data.user) {
-      errors.push({ row: i + 1, message: error?.message ?? "Could not create auth user." });
+      errors.push({
+        row: i + 1,
+        message: `Could not create login for ${firstName} ${lastName}: ${formatErr(error)}`,
+      });
       continue;
     }
 
@@ -129,7 +169,7 @@ export async function POST(request: Request) {
         initials,
         role,
         email,
-        employee_id: String(employeeId),
+        employee_id: employeeId,
         status: "active",
         must_change_password: true,
         onboarding_complete: false,
@@ -137,12 +177,15 @@ export async function POST(request: Request) {
       .eq("id", data.user.id);
 
     if (profileErr) {
-      errors.push({ row: i + 1, message: profileErr.message });
+      errors.push({
+        row: i + 1,
+        message: `Account created but profile update failed for ${firstName} ${lastName}: ${formatErr(profileErr)}`,
+      });
       continue;
     }
 
     created.push({
-      employeeId: String(employeeId),
+      employeeId,
       firstName,
       lastName,
       initials,

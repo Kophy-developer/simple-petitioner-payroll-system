@@ -7,9 +7,14 @@ export type RosterImportRow = {
   role?: string;
 };
 
+function normalizeHeader(value: string) {
+  return value.trim().toLowerCase().replace(/[_\s]+/g, " ");
+}
+
 function cell(row: Record<string, unknown>, keys: string[]) {
-  for (const key of keys) {
-    const value = row[key];
+  const wanted = keys.map(normalizeHeader);
+  for (const [rawKey, value] of Object.entries(row)) {
+    if (!wanted.includes(normalizeHeader(rawKey))) continue;
     if (value == null) continue;
     const text = String(value).trim();
     if (text) return text;
@@ -23,12 +28,12 @@ export function parseRosterWorkbook(buffer: ArrayBuffer): RosterImportRow[] {
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null });
   return rows
     .map((row) => ({
-      firstName: cell(row, ["First Name", "first_name", "FirstName", "firstName", "First"]),
-      lastName: cell(row, ["Last Name", "last_name", "LastName", "lastName", "Last"]),
-      initials: cell(row, ["Initials", "initials", "Initial"]).toUpperCase(),
+      firstName: cell(row, ["First Name", "first_name", "FirstName", "firstName", "First", "Given Name"]),
+      lastName: cell(row, ["Last Name", "last_name", "LastName", "lastName", "Last", "Surname", "Family Name"]),
+      initials: cell(row, ["Initials", "initials", "Initial", "Init"]).toUpperCase(),
       role: cell(row, ["Role", "role"]) || undefined,
     }))
-    .filter((row) => row.firstName || row.lastName || row.initials);
+    .filter((row) => row.firstName && row.lastName && row.initials);
 }
 
 export type CredentialExportRow = {
