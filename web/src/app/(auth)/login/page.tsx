@@ -28,6 +28,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (code) {
+      window.location.replace(
+        `/auth/callback?code=${encodeURIComponent(code)}&next=/reset-password`,
+      );
+      return;
+    }
+    const authError = params.get("error");
+    if (authError) setError(authError);
     setIdentifier(roleDemoUsers[3]?.email ?? "");
     setPassword(demoPassword);
     setReady(true);

@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
     setSent(false);
     try {
       const supabase = createClient();
-      const redirectTo = `${window.location.origin}/login`;
+      const redirectTo = `${window.location.origin}/auth/callback?next=/reset-password`;
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo,
       });
@@ -51,7 +51,7 @@ export default function ForgotPasswordPage() {
           </p>
           <h1 className="mt-2 font-display text-3xl text-ink">Reset password</h1>
           <p className="mt-3 text-sm leading-7 text-ink/65">
-            Enter your account email. Local Supabase mail appears in the Inbucket UI at port 54324.
+            Enter your account email and we will send a reset link.
           </p>
         </div>
         <form className="space-y-4" onSubmit={(e) => void handleSubmit(e)}>

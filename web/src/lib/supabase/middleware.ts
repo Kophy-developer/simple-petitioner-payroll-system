@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const publicPaths = ["/login", "/forgot-password"];
+const publicPaths = ["/login", "/forgot-password", "/auth/callback"];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -20,6 +20,9 @@ export async function updateSession(request: NextRequest) {
   if (pathname.startsWith("/api/")) {
     return supabaseResponse;
   }
+
+  const isResetPassword =
+    pathname === "/reset-password" || pathname.startsWith("/reset-password/");
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -52,7 +55,7 @@ export async function updateSession(request: NextRequest) {
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   );
 
-  if (!user && !isAuthPage && pathname !== "/") {
+  if (!user && !isAuthPage && !isResetPassword && pathname !== "/") {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -71,7 +74,12 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && !pathname.startsWith("/onboarding") && pathname !== "/") {
+  if (
+    user &&
+    !pathname.startsWith("/onboarding") &&
+    !isResetPassword &&
+    pathname !== "/"
+  ) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("must_change_password, onboarding_complete")
