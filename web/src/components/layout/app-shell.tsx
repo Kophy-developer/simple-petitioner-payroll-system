@@ -107,6 +107,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!user) return null;
 
+  const onboarding = pathname.startsWith("/onboarding");
+
+  if (onboarding) {
+    return (
+      <div className="min-h-screen bg-parchment/40">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">{children}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b border-ink/10 bg-ink text-parchment print:hidden lg:hidden">

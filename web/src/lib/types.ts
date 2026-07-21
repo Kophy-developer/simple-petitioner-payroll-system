@@ -62,6 +62,8 @@ export type DemoUser = {
   phone?: string | null;
   subAccountId?: string | null;
   subAccountCode?: string | null;
+  mustChangePassword?: boolean;
+  onboardingComplete?: boolean;
 };
 
 export type Petition = {

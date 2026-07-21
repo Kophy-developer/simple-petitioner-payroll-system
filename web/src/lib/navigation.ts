@@ -62,6 +62,9 @@ export function canAccess(role: UserRole, pathname: string) {
   if (pathname === "/profile" || pathname.startsWith("/profile/")) {
     return true;
   }
+  if (pathname.startsWith("/onboarding")) {
+    return true;
+  }
   if (pathname === "/reports" || pathname.startsWith("/reports")) {
     return role === "super_admin" || role === "account_admin" || role === "team_lead";
   }

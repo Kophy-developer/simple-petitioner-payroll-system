@@ -12,6 +12,7 @@ build/
 .env.*
 !.env.example
 !web/.env.example
+scripts/resend-smtp.env
 
 # Supabase
 supabase/.branches

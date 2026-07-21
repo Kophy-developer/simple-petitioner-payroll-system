@@ -19,6 +19,11 @@ import {
   listTeamMemberships,
   setTeamMembers,
 } from "@/lib/api/live";
+import {
+  downloadCredentialsWorkbook,
+  parseRosterWorkbook,
+  type CredentialExportRow,
+} from "@/lib/roster-import";
 import type { DemoUser, UserRole, WageCurrency } from "@/lib/types";
 
 export default function AdminPage() {
@@ -44,6 +49,13 @@ export default function AdminPage() {
   const [draft, setDraft] = useState<{ lead: string; ids: string[] } | null>(null);
   const [savingTeam, setSavingTeam] = useState(false);
   const [teamMessage, setTeamMessage] = useState("");
+  const [rosterPreview, setRosterPreview] = useState<
+    { firstName: string; lastName: string; initials: string; role?: string }[]
+  >([]);
+  const [rosterFileName, setRosterFileName] = useState("");
+  const [importingRoster, setImportingRoster] = useState(false);
+  const [credentials, setCredentials] = useState<CredentialExportRow[]>([]);
+  const [rosterMessage, setRosterMessage] = useState("");
 
   const leads = users.filter((u) => u.role === "team_lead");
   const fieldWorkers = users.filter((u) =>
@@ -143,6 +155,63 @@ export default function AdminPage() {
     }
   }
 
+  async function onRosterFile(file: File | null) {
+    setRosterMessage("");
+    setCredentials([]);
+    setRosterPreview([]);
+    setRosterFileName(file?.name ?? "");
+    if (!file) return;
+    try {
+      const buffer = await file.arrayBuffer();
+      setRosterPreview(parseRosterWorkbook(buffer));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not parse roster file.");
+    }
+  }
+
+  async function importRoster() {
+    if (!rosterPreview.length) return;
+    setImportingRoster(true);
+    setError("");
+    setRosterMessage("");
+    try {
+      const res = await fetch("/api/admin/roster", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rows: rosterPreview.map((row) => ({
+            firstName: row.firstName,
+            lastName: row.lastName,
+            initials: row.initials,
+            role: (row.role as UserRole | undefined) || "petitioner",
+          })),
+        }),
+      });
+      const payload = (await res.json()) as {
+        error?: string;
+        created?: CredentialExportRow[];
+        errors?: { row: number; message: string }[];
+      };
+      if (!res.ok) throw new Error(payload.error || "Could not import roster.");
+      const created = payload.created ?? [];
+      setCredentials(created);
+      setRosterMessage(
+        `Created ${created.length} account(s)${
+          payload.errors?.length ? ` · ${payload.errors.length} row error(s)` : ""
+        }. Download the credentials sheet before leaving this page.`,
+      );
+      if (payload.errors?.length) {
+        setError(payload.errors.map((e) => `Row ${e.row}: ${e.message}`).join(" · "));
+      }
+      setRosterPreview([]);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not import roster.");
+    } finally {
+      setImportingRoster(false);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -216,6 +285,54 @@ export default function AdminPage() {
               ))}
             </tbody>
           </DataTable>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardBody className="space-y-5">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Roster</p>
+            <h3 className="font-display text-xl text-ink">Import names &amp; initials</h3>
+            <p className="mt-1 text-sm text-ink/55">
+              Upload an Excel with First Name, Last Name, Initials. The system assigns 5-digit
+              employee IDs and temporary passwords, then you download a credentials sheet.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="roster-file">Roster workbook</Label>
+            <Input
+              id="roster-file"
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={(e) => void onRosterFile(e.target.files?.[0] ?? null)}
+            />
+            {rosterFileName ? <p className="text-xs text-ink/55">{rosterFileName}</p> : null}
+          </div>
+          {rosterPreview.length ? (
+            <p className="text-sm text-ink/70">{rosterPreview.length} row(s) ready to import.</p>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              onClick={() => void importRoster()}
+              disabled={importingRoster || rosterPreview.length === 0}
+            >
+              {importingRoster ? "Creating accounts…" : "Create accounts"}
+            </Button>
+            {credentials.length ? (
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  downloadCredentialsWorkbook(
+                    credentials,
+                    `bap-credentials-${new Date().toISOString().slice(0, 10)}.xlsx`,
+                  )
+                }
+              >
+                Download credentials Excel
+              </Button>
+            ) : null}
+            {rosterMessage ? <span className="text-sm text-success">{rosterMessage}</span> : null}
+          </div>
         </CardBody>
       </Card>
 

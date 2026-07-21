@@ -18,6 +18,29 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    if (user.mustChangePassword && pathname !== "/onboarding/password") {
+      router.replace("/onboarding/password");
+      return;
+    }
+
+    if (
+      !user.mustChangePassword &&
+      !user.onboardingComplete &&
+      pathname !== "/onboarding/contact"
+    ) {
+      router.replace("/onboarding/contact");
+      return;
+    }
+
+    if (
+      !user.mustChangePassword &&
+      user.onboardingComplete &&
+      pathname.startsWith("/onboarding")
+    ) {
+      router.replace("/dashboard");
+      return;
+    }
+
     if (!canAccess(user.role, pathname)) {
       router.replace("/dashboard");
     }
@@ -29,6 +52,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         <div className="h-8 w-8 animate-pulse rounded-full bg-brass/40" />
       </div>
     );
+  }
+
+  if (user.mustChangePassword && pathname !== "/onboarding/password") return null;
+  if (
+    !user.mustChangePassword &&
+    !user.onboardingComplete &&
+    pathname !== "/onboarding/contact"
+  ) {
+    return null;
   }
 
   if (!canAccess(user.role, pathname)) {

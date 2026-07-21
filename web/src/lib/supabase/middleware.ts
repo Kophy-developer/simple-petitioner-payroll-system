@@ -55,9 +55,34 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && isAuthPage) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("must_change_password, onboarding_complete")
+      .eq("id", user.id)
+      .maybeSingle();
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    if (profile?.must_change_password) url.pathname = "/onboarding/password";
+    else if (profile && profile.onboarding_complete === false) url.pathname = "/onboarding/contact";
+    else url.pathname = "/dashboard";
     return NextResponse.redirect(url);
+  }
+
+  if (user && !pathname.startsWith("/onboarding") && pathname !== "/") {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("must_change_password, onboarding_complete")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (profile?.must_change_password) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding/password";
+      return NextResponse.redirect(url);
+    }
+    if (profile && profile.onboarding_complete === false) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding/contact";
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;

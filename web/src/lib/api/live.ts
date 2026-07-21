@@ -48,6 +48,8 @@ function mapProfile(row: {
   employee_id?: string | null;
   phone?: string | null;
   sub_account_id?: string | null;
+  must_change_password?: boolean | null;
+  onboarding_complete?: boolean | null;
 }): DemoUser {
   return {
     id: row.id,
@@ -65,6 +67,8 @@ function mapProfile(row: {
     employeeId: row.employee_id,
     phone: row.phone,
     subAccountId: row.sub_account_id,
+    mustChangePassword: !!row.must_change_password,
+    onboardingComplete: row.onboarding_complete !== false,
   };
 }
 
@@ -192,7 +196,7 @@ export async function listProfiles() {
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags, employee_id, phone, sub_account_id",
+      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags, employee_id, phone, sub_account_id, must_change_password, onboarding_complete",
     )
     .order("last_name");
   if (error) throw error;
@@ -225,7 +229,7 @@ export async function getProfile(userId: string) {
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags, employee_id, phone, sub_account_id",
+      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags, employee_id, phone, sub_account_id, must_change_password, onboarding_complete",
     )
     .eq("id", userId)
     .maybeSingle();

@@ -39,6 +39,8 @@ type ProfileRow = {
   employee_id?: string | null;
   phone?: string | null;
   sub_account_id?: string | null;
+  must_change_password?: boolean | null;
+  onboarding_complete?: boolean | null;
 };
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -74,7 +76,15 @@ function mapProfile(
     employeeId: profile.employee_id,
     phone: profile.phone,
     subAccountId: profile.sub_account_id,
+    mustChangePassword: !!profile.must_change_password,
+    onboardingComplete: profile.onboarding_complete !== false,
   };
+}
+
+export function postLoginPath(user: DemoUser) {
+  if (user.mustChangePassword) return "/onboarding/password";
+  if (!user.onboardingComplete) return "/onboarding/contact";
+  return "/dashboard";
 }
 
 async function resolveLoginEmail(identifier: string) {
@@ -101,7 +111,7 @@ async function fetchSessionUser(): Promise<DemoUser | null> {
   const { data: profile, error } = await supabase
     .from("profiles")
     .select(
-      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags, employee_id, phone, sub_account_id",
+      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags, employee_id, phone, sub_account_id, must_change_password, onboarding_complete",
     )
     .eq("id", session.user.id)
     .maybeSingle();
@@ -207,7 +217,7 @@ export function DemoSessionProvider({ children }: { children: React.ReactNode })
         setUser(next);
         setIsLoading(false);
         setAuthReady(true);
-        router.replace("/dashboard");
+        router.replace(postLoginPath(next));
         return {};
       } catch (e) {
         setIsLoading(false);
@@ -252,7 +262,7 @@ export function DemoSessionProvider({ children }: { children: React.ReactNode })
         setUser(next);
         setIsLoading(false);
         setAuthReady(true);
-        router.replace("/dashboard");
+        router.replace(postLoginPath(next));
         return {};
       } catch (e) {
         setIsLoading(false);
@@ -298,6 +308,7 @@ export function DemoSessionProvider({ children }: { children: React.ReactNode })
           last_name: patch.lastName ?? user.lastName,
           initials: patch.initials ?? user.initials,
           profile_tags: patch.profileTags ?? user.profileTags,
+          phone: patch.phone !== undefined ? patch.phone : user.phone,
         })
         .eq("id", user.authId);
 

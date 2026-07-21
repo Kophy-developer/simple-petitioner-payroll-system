@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useDemoSession } from "@/lib/demo-session";
-import { canEditFinancialConfig, userDisplayName } from "@/lib/access";
+import { canEditFinancialConfig } from "@/lib/access";
 import { roleLabel } from "@/lib/navigation";
 
 export default function ProfilePage() {
@@ -31,6 +31,7 @@ export default function ProfilePage() {
         firstName: String(data.get("firstName")),
         lastName: String(data.get("lastName")),
         initials: String(data.get("initials")),
+        phone: String(data.get("phone") || "").trim() || null,
         profileTags: String(data.get("tags"))
           .split(",")
           .map((t) => t.trim())
@@ -63,9 +64,15 @@ export default function ProfilePage() {
                 <Input id="lastName" name="lastName" defaultValue={user.lastName} />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="initials">Initials</Label>
-              <Input id="initials" name="initials" defaultValue={user.initials} maxLength={3} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="initials">Initials</Label>
+                <Input id="initials" name="initials" defaultValue={user.initials} maxLength={3} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone</Label>
+                <Input id="phone" name="phone" type="tel" defaultValue={user.phone ?? ""} />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="tags">Profile tags</Label>
@@ -86,6 +93,10 @@ export default function ProfilePage() {
           <CardBody className="space-y-4">
             <h2 className="font-display text-xl text-ink">Account</h2>
             <div className="space-y-3 text-sm">
+              <div className="flex justify-between border-b border-ink/8 pb-3">
+                <span className="text-ink/55">Employee ID</span>
+                <span className="font-mono">{user.employeeId ?? "—"}</span>
+              </div>
               <div className="flex justify-between border-b border-ink/8 pb-3">
                 <span className="text-ink/55">Email</span>
                 <span>{user.email}</span>

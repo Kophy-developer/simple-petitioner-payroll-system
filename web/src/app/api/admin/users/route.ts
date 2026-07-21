@@ -80,6 +80,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  let employeeId: string | null = null;
+  const { data: nextId } = await admin.rpc("next_employee_id");
+  if (nextId) employeeId = String(nextId);
+
   if (data.user) {
     await admin
       .from("profiles")
@@ -91,9 +95,16 @@ export async function POST(request: Request) {
         wage_currency: body.wageCurrency ?? null,
         hourly_wage: body.hourlyWage ?? null,
         status: "active",
+        employee_id: employeeId,
+        must_change_password: true,
+        onboarding_complete: true,
       })
       .eq("id", data.user.id);
   }
 
-  return NextResponse.json({ id: data.user?.id, email: data.user?.email });
+  return NextResponse.json({
+    id: data.user?.id,
+    email: data.user?.email,
+    employeeId,
+  });
 }
