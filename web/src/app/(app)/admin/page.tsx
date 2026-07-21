@@ -9,6 +9,7 @@ import { DataTable, Td, Th } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { roleLabel } from "@/lib/navigation";
@@ -459,12 +460,12 @@ export default function AdminPage() {
           </div>
           <div className="space-y-2">
             <Label>Temporary password</Label>
-            <Input
+            <PasswordInput
               required
-              type="text"
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">

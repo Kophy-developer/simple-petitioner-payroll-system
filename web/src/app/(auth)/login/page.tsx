@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardBody } from "@/components/ui/card";
 import { roleDemoUsers, useDemoSession } from "@/lib/demo-session";
@@ -130,16 +131,15 @@ export default function LoginPage() {
                   <Label htmlFor="password">Password</Label>
                   <Link href="/forgot-password" className="text-xs font-medium text-civic-navy hover:underline">Forgot password?</Link>
                 </div>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  suppressHydrationWarning
-                />
+                  <PasswordInput
+                    id="password"
+                    name="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    suppressHydrationWarning
+                  />
               </div>
               {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
               <Button type="submit" className="w-full" disabled={loading || !ready}>
