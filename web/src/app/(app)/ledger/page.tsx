@@ -11,8 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DataTable, Td, Th } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
+import { LotusLedgerPanel } from "@/components/ledger/lotus-ledger-panel";
 import { useDemoSession } from "@/lib/demo-session";
 import { canViewAllLedgers, isFieldRole } from "@/lib/access";
+import { canAccessLotusLedger } from "@/lib/navigation";
 import { payModelLabel } from "@/lib/payroll";
 import { formatCurrency, formatDateTime, formatPercent } from "@/lib/format";
 import {
@@ -32,6 +34,8 @@ function canUseOverview(role: DemoUser["role"]) {
   return canViewAllLedgers(role);
 }
 
+type LedgerView = "all" | "individual" | "lotus";
+
 function LedgerContent() {
   const { user } = useDemoSession();
   const router = useRouter();
@@ -45,13 +49,16 @@ function LedgerContent() {
   const queryPage = Math.max(1, parseInt(params.get("page") ?? "1", 10) || 1);
 
   const multiUser = !!user && canUseOverview(user.role);
-  const view: "all" | "individual" = !multiUser
+  const canLotus = !!user && canAccessLotusLedger(user.role);
+  const view: LedgerView = !multiUser
     ? "individual"
-    : queryView === "all"
-      ? "all"
-      : queryView === "individual" || (!!queryUser && queryView !== "all")
-        ? "individual"
-        : "all";
+    : queryView === "lotus" && canLotus
+      ? "lotus"
+      : queryView === "all"
+        ? "all"
+        : queryView === "individual" || (!!queryUser && queryView !== "all" && queryView !== "lotus")
+          ? "individual"
+          : "all";
 
   const [profiles, setProfiles] = useState<DemoUser[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
@@ -158,19 +165,20 @@ function LedgerContent() {
   }, [user]);
 
   useEffect(() => {
+    if (view === "lotus") return;
     if (view === "all") void loadOverview();
     else void loadIndividual();
   }, [view, loadOverview, loadIndividual]);
 
   if (!user) return null;
 
-  function setView(next: "all" | "individual", userId?: string) {
+  function setView(next: LedgerView, userId?: string) {
     const nextParams = new URLSearchParams();
     nextParams.set("view", next);
     if (next === "individual") {
       const id = userId || selectedId || queryUser;
       if (id) nextParams.set("user", id);
-    } else {
+    } else if (next === "all") {
       if (queryQ) nextParams.set("q", queryQ);
       if (queryIssue) nextParams.set("issue", queryIssue);
       if (queryPending) nextParams.set("pending", "1");
@@ -223,9 +231,11 @@ function LedgerContent() {
         eyebrow="Payroll"
         title="Circulator Ledger"
         description={
-          view === "all"
-            ? "Summary of all circulators you can view. Open a person for issue-level detail."
-            : "Issue-sectioned pay loaded from the database."
+          view === "lotus"
+            ? "Lotus partner sub-account. Circulators on Lotus are paid the Lotus rate (markup is their profit)."
+            : view === "all"
+              ? "Summary of all circulators you can view. Open a person for issue-level detail."
+              : "Issue-sectioned pay loaded from the database."
         }
         actions={
           multiUser ? (
@@ -247,6 +257,16 @@ function LedgerContent() {
                 >
                   Individual
                 </Button>
+                {canLotus ? (
+                  <Button
+                    size="sm"
+                    variant={view === "lotus" ? "primary" : "ghost"}
+                    className={view === "lotus" ? "" : "border-0 bg-transparent"}
+                    onClick={() => setView("lotus")}
+                  >
+                    Lotus Team Ledger
+                  </Button>
+                ) : null}
               </div>
               {view === "individual" ? (
                 <div className="w-56 space-y-2">
@@ -268,6 +288,10 @@ function LedgerContent() {
         }
       />
 
+      {view === "lotus" ? (
+        <LotusLedgerPanel />
+      ) : (
+        <>
       {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
       {loading ? <p className="text-sm text-ink/55">Loading ledger…</p> : null}
 
@@ -563,6 +587,8 @@ function LedgerContent() {
       <Link href="/directory" className="text-sm text-civic-navy hover:underline">
         Employee directory
       </Link>
+        </>
+      )}
     </div>
   );
 }

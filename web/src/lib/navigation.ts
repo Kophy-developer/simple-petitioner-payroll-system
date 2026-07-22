@@ -26,20 +26,21 @@ export const navItems: NavItem[] = [
   { href: "/validity", label: "Validity Records", roles: ["super_admin", "account_admin", "validator"], section: "Collection" },
   { href: "/directory", label: "Employee Directory", roles: ["super_admin", "account_admin"], section: "People" },
   { href: "/ledger", label: "Ledger", roles: ["super_admin", "account_admin", "team_lead", "petitioner"], section: "Payroll", matchPrefix: true },
-  { href: "/lotus-ledger", label: "Lotus Team Ledger", roles: ["super_admin", "account_admin"], section: "Payroll" },
   { href: "/payroll", label: "Payroll & Expenses", roles: ["super_admin", "account_admin", "team_lead", "petitioner", "canvasser"], section: "Payroll", matchPrefix: true },
+  { href: "/loans", label: "Loans & Advances", roles: ["super_admin", "team_lead", "petitioner", "canvasser"], section: "Payroll", matchPrefix: true },
+  { href: "/admin", label: "Admin Panel", roles: ["super_admin", "account_admin"], section: "Configuration", matchPrefix: true },
+];
+
+const deepLinkAccess: { href: string; roles: UserRole[]; matchPrefix?: boolean }[] = [
+  { href: "/lotus-ledger", roles: ["super_admin", "account_admin"] },
   {
     href: "/payments",
-    label: "Payments",
     roles: ["super_admin", "team_lead", "petitioner", "canvasser"],
-    section: "Payroll",
     matchPrefix: true,
   },
-  { href: "/loans", label: "Loans & Advances", roles: ["super_admin", "team_lead", "petitioner", "canvasser"], section: "Payroll", matchPrefix: true },
-  { href: "/field-ops", label: "Field Ops", roles: ["super_admin", "account_admin"], section: "Configuration" },
-  { href: "/pay-rates", label: "Pay Rates", roles: ["super_admin"], section: "Configuration" },
-  { href: "/expense-config", label: "Car & Housing", roles: ["super_admin", "account_admin"], section: "Configuration" },
-  { href: "/admin", label: "Admin Panel", roles: ["super_admin", "account_admin"], section: "Configuration", matchPrefix: true },
+  { href: "/pay-rates", roles: ["super_admin"] },
+  { href: "/expense-config", roles: ["super_admin", "account_admin"] },
+  { href: "/field-ops", roles: ["super_admin", "account_admin"] },
 ];
 
 export function getNavForRole(role: UserRole) {
@@ -58,6 +59,15 @@ export function roleLabel(role: UserRole) {
   return labels[role];
 }
 
+function matchesRoute(
+  pathname: string,
+  href: string,
+  matchPrefix?: boolean,
+) {
+  if (matchPrefix) return pathname === href || pathname.startsWith(`${href}/`);
+  return pathname === href;
+}
+
 export function canAccess(role: UserRole, pathname: string) {
   if (pathname === "/profile" || pathname.startsWith("/profile/")) {
     return true;
@@ -68,9 +78,9 @@ export function canAccess(role: UserRole, pathname: string) {
   if (pathname === "/reports" || pathname.startsWith("/reports")) {
     return role === "super_admin" || role === "account_admin" || role === "team_lead";
   }
-  const item = navItems.find((n) =>
-    n.matchPrefix ? pathname === n.href || pathname.startsWith(`${n.href}/`) : pathname === n.href,
-  );
+  const deep = deepLinkAccess.find((n) => matchesRoute(pathname, n.href, n.matchPrefix));
+  if (deep) return deep.roles.includes(role);
+  const item = navItems.find((n) => matchesRoute(pathname, n.href, n.matchPrefix));
   if (item) return item.roles.includes(role);
   const parent = navItems.find((n) => pathname.startsWith(`${n.href}/`));
   return parent ? parent.roles.includes(role) : false;
@@ -79,4 +89,29 @@ export function canAccess(role: UserRole, pathname: string) {
 export function isNavActive(pathname: string, href: string, matchPrefix?: boolean) {
   if (matchPrefix) return pathname === href || pathname.startsWith(`${href}/`);
   return pathname === href;
+}
+
+export function canAccessLotusLedger(role: UserRole) {
+  return role === "super_admin" || role === "account_admin";
+}
+
+export function canAccessPayments(role: UserRole) {
+  return (
+    role === "super_admin" ||
+    role === "team_lead" ||
+    role === "petitioner" ||
+    role === "canvasser"
+  );
+}
+
+export function canAccessPayRates(role: UserRole) {
+  return role === "super_admin";
+}
+
+export function canAccessExpenseConfig(role: UserRole) {
+  return role === "super_admin" || role === "account_admin";
+}
+
+export function canAccessFieldOps(role: UserRole) {
+  return role === "super_admin" || role === "account_admin";
 }

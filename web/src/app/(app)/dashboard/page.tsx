@@ -156,7 +156,7 @@ export default function DashboardPage() {
 
       {canRunPayroll(user.role) ? (
         <Link
-          href="/payments"
+          href="/payroll?tab=payments"
           className="flex items-center justify-between rounded-2xl border border-brass/30 bg-brass/10 px-5 py-4 transition hover:bg-brass/15"
         >
           <div>

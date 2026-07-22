@@ -75,7 +75,7 @@ export async function POST(request: Request) {
   const body = (await request.json()) as { rows?: RosterRow[] };
   const rows = body.rows ?? [];
   if (!rows.length) {
-    return NextResponse.json({ error: "No roster rows provided." }, { status: 400 });
+    return NextResponse.json({ error: "No employee rows provided." }, { status: 400 });
   }
 
   const admin = createClient(url, serviceKey, {

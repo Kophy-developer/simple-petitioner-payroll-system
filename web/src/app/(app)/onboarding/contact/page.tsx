@@ -29,7 +29,15 @@ export default function OnboardingContactPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, phone }),
       });
-      const payload = (await res.json()) as { error?: string };
+      const raw = await res.text();
+      let payload: { error?: string } = {};
+      if (raw) {
+        try {
+          payload = JSON.parse(raw) as { error?: string };
+        } catch {
+          throw new Error("Could not save contact info. Please try again.");
+        }
+      }
       if (!res.ok) throw new Error(payload.error || "Could not save contact info.");
       await updateUser({
         email: email.trim().toLowerCase(),

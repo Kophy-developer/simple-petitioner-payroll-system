@@ -251,13 +251,13 @@ export default function NewExpensePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="car-active">Active in Field Ops</Label>
+                  <Label htmlFor="car-active">Active in Field Operations</Label>
                   <Select
                     id="car-active"
                     value={carActive ? "yes" : "no"}
                     onChange={(e) => setCarActive(e.target.value === "yes")}
                   >
-                    <option value="yes">Yes — show on Field Ops</option>
+                    <option value="yes">Yes — show on Field Operations</option>
                     <option value="no">No</option>
                   </Select>
                 </div>

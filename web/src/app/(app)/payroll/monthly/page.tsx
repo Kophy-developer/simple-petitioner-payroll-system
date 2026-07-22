@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 export default function MonthlyPayrollRedirectPage() {
   const router = useRouter();
   useEffect(() => {
-    router.replace("/payments");
+    router.replace("/payroll?tab=payments");
   }, [router]);
   return (
     <p className="p-8 text-sm text-ink/55">

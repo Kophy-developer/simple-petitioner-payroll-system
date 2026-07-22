@@ -90,8 +90,8 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
         title={`Edit ${user.firstName} ${user.lastName}`}
         description="Role, status, wage, and currency."
         actions={
-          <Link href="/admin" className="text-sm text-civic-navy hover:underline">
-            Back
+          <Link href="/directory" className="text-sm text-civic-navy hover:underline">
+            Back to directory
           </Link>
         }
       />

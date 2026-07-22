@@ -1,496 +1,220 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
-import { DataTable, Td, Th } from "@/components/ui/data-table";
-import { Badge } from "@/components/ui/badge";
-import { Modal } from "@/components/ui/modal";
-import { Input } from "@/components/ui/input";
-import { PasswordInput } from "@/components/ui/password-input";
-import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
-import { roleLabel } from "@/lib/navigation";
-import { formatCurrency } from "@/lib/format";
+import { PayRatesPanel } from "@/components/admin/pay-rates-panel";
+import { ExpenseConfigPanel } from "@/components/admin/expense-config-panel";
+import { FieldOpsPanel } from "@/components/admin/field-ops-panel";
+import { getBenchmark } from "@/lib/api/live";
+import { useDemoSession } from "@/lib/demo-session";
 import {
-  getBenchmark,
-  listProfiles,
-  listTeamMemberships,
-  setTeamMembers,
-} from "@/lib/api/live";
-import {
-  downloadCredentialsWorkbook,
-  parseRosterWorkbook,
-  type CredentialExportRow,
-} from "@/lib/roster-import";
-import type { DemoUser, UserRole, WageCurrency } from "@/lib/types";
+  canAccessExpenseConfig,
+  canAccessFieldOps,
+  canAccessPayRates,
+} from "@/lib/navigation";
 
-export default function AdminPage() {
-  const [users, setUsers] = useState<DemoUser[]>([]);
+type AdminTab = "overview" | "pay-rates" | "expense-config" | "field-ops";
+
+function AdminContent() {
+  const { user } = useDemoSession();
+  const router = useRouter();
+  const params = useSearchParams();
   const [benchmark, setBenchmark] = useState(75);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("demo1234");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [initials, setInitials] = useState("");
-  const [role, setRole] = useState<UserRole>("petitioner");
-  const [hourlyWage, setHourlyWage] = useState("");
-  const [currency, setCurrency] = useState<WageCurrency>("USD");
-  const [memberships, setMemberships] = useState<
-    { leadId: string; memberId: string }[]
-  >([]);
-  const [selectedLead, setSelectedLead] = useState("");
-  const [draft, setDraft] = useState<{ lead: string; ids: string[] } | null>(null);
-  const [savingTeam, setSavingTeam] = useState(false);
-  const [teamMessage, setTeamMessage] = useState("");
-  const [rosterPreview, setRosterPreview] = useState<
-    { firstName: string; lastName: string; initials: string; role?: string }[]
-  >([]);
-  const [rosterFileName, setRosterFileName] = useState("");
-  const [importingRoster, setImportingRoster] = useState(false);
-  const [credentials, setCredentials] = useState<CredentialExportRow[]>([]);
-  const [rosterMessage, setRosterMessage] = useState("");
 
-  const leads = users.filter((u) => u.role === "team_lead");
-  const fieldWorkers = users.filter((u) =>
-    ["petitioner", "validator"].includes(u.role),
-  );
-  const activeLead = selectedLead || leads[0]?.id || "";
-  const savedMembers = memberships
-    .filter((m) => m.leadId === activeLead)
-    .map((m) => m.memberId);
-  const memberSet = draft && draft.lead === activeLead ? draft.ids : savedMembers;
+  const canPayRates = user ? canAccessPayRates(user.role) : false;
+  const canExpense = user ? canAccessExpenseConfig(user.role) : false;
+  const canField = user ? canAccessFieldOps(user.role) : false;
 
-  async function load() {
-    setLoading(true);
-    setError("");
-    try {
-      const [people, pct, teams] = await Promise.all([
-        listProfiles(),
-        getBenchmark(),
-        listTeamMemberships(),
-      ]);
-      setUsers(people);
-      setBenchmark(pct);
-      setMemberships(teams);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load admin data.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const requested = params.get("tab");
+  const tab: AdminTab =
+    requested === "pay-rates" && canPayRates
+      ? "pay-rates"
+      : requested === "expense-config" && canExpense
+        ? "expense-config"
+        : requested === "field-ops" && canField
+          ? "field-ops"
+          : "overview";
 
   useEffect(() => {
-    void load();
-  }, []);
-
-  function toggleMember(id: string) {
-    const next = memberSet.includes(id)
-      ? memberSet.filter((x) => x !== id)
-      : [...memberSet, id];
-    setDraft({ lead: activeLead, ids: next });
-  }
-
-  async function saveTeam() {
-    if (!activeLead) return;
-    setSavingTeam(true);
-    setError("");
-    setTeamMessage("");
-    try {
-      await setTeamMembers(activeLead, memberSet);
-      const teams = await listTeamMemberships();
-      setMemberships(teams);
-      setDraft(null);
-      setTeamMessage("Team updated.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not update team.");
-    } finally {
-      setSavingTeam(false);
+    if (tab !== "overview") {
+      setLoading(false);
+      return;
     }
+    void getBenchmark()
+      .then(setBenchmark)
+      .catch((e) => setError(e instanceof Error ? e.message : "Could not load admin data."))
+      .finally(() => setLoading(false));
+  }, [tab]);
+
+  if (!user) return null;
+
+  function setTab(next: AdminTab) {
+    const nextParams = new URLSearchParams();
+    if (next !== "overview") nextParams.set("tab", next);
+    const qs = nextParams.toString();
+    router.push(qs ? `/admin?${qs}` : "/admin");
   }
 
-  async function createUser(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
-    setMessage("");
-    try {
-      const res = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          password,
-          firstName,
-          lastName,
-          initials,
-          role,
-          hourlyWage: hourlyWage === "" ? null : parseFloat(hourlyWage),
-          wageCurrency: currency,
-        }),
-      });
-      const payload = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(payload.error || "Could not create user.");
-      setOpen(false);
-      setEmail("");
-      setPassword("demo1234");
-      setFirstName("");
-      setLastName("");
-      setInitials("");
-      setRole("petitioner");
-      setHourlyWage("");
-      setCurrency("USD");
-      setMessage("User created.");
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create user.");
-    } finally {
-      setSaving(false);
-    }
-  }
+  const title =
+    tab === "pay-rates"
+      ? "Pay Rates"
+      : tab === "expense-config"
+        ? "Car & Housing"
+        : tab === "field-ops"
+          ? "Field Operations"
+          : "Admin Panel";
 
-  async function onRosterFile(file: File | null) {
-    setRosterMessage("");
-    setCredentials([]);
-    setRosterPreview([]);
-    setRosterFileName(file?.name ?? "");
-    if (!file) return;
-    try {
-      const buffer = await file.arrayBuffer();
-      setRosterPreview(parseRosterWorkbook(buffer));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not parse roster file.");
-    }
-  }
-
-  async function importRoster() {
-    if (!rosterPreview.length) return;
-    setImportingRoster(true);
-    setError("");
-    setRosterMessage("");
-    try {
-      const res = await fetch("/api/admin/roster", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rows: rosterPreview.map((row) => ({
-            firstName: row.firstName,
-            lastName: row.lastName,
-            initials: row.initials,
-            role: (row.role as UserRole | undefined) || "petitioner",
-          })),
-        }),
-      });
-      const payload = (await res.json()) as {
-        error?: string;
-        created?: CredentialExportRow[];
-        errors?: { row: number; message: string }[];
-      };
-      if (!res.ok) throw new Error(payload.error || "Could not import roster.");
-      const created = payload.created ?? [];
-      setCredentials(created);
-      setRosterMessage(
-        `Created ${created.length} account(s)${
-          payload.errors?.length ? ` · ${payload.errors.length} row error(s)` : ""
-        }. Download the credentials sheet before leaving this page.`,
-      );
-      if (payload.errors?.length) {
-        setError(payload.errors.map((e) => `Row ${e.row}: ${e.message}`).join(" · "));
-      }
-      setRosterPreview([]);
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not import roster.");
-    } finally {
-      setImportingRoster(false);
-    }
-  }
+  const description =
+    tab === "pay-rates"
+      ? "Per petition / issue pay rates and the system-wide payable benchmark."
+      : tab === "expense-config"
+        ? "Standard rates plus optional per-issue overrides."
+        : tab === "field-ops"
+          ? "Active cars, Airbnbs, and hotels. Map comes later; this view is the live occupancy board."
+          : "System settings. People management lives in Employee Directory.";
 
   return (
     <div className="space-y-8">
       <PageHeader
         eyebrow="Configuration"
-        title="Admin Panel"
-        description="Users, wages, currency, and system benchmark."
-        actions={<Button onClick={() => setOpen(true)}>Create user</Button>}
-      />
-      {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
-      {message ? <p className="rounded-xl bg-success/10 px-4 py-3 text-sm text-success">{message}</p> : null}
-      {loading ? <p className="text-sm text-ink/55">Loading…</p> : null}
-      <Card className="max-w-sm">
-        <CardBody>
-          <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Benchmark %</p>
-          <p className="font-display text-4xl tabular-nums">{benchmark}%</p>
-          <Link href="/pay-rates" className="mt-3 inline-block text-sm text-civic-navy hover:underline">
-            Edit via pay rates
-          </Link>
-        </CardBody>
-      </Card>
-      <Card>
-        <CardBody className="p-0">
-          <DataTable>
-            <thead>
-              <tr>
-                <Th>Name</Th>
-                <Th>Employee ID</Th>
-                <Th>Email</Th>
-                <Th>Role</Th>
-                <Th>Status</Th>
-                <Th>Wage</Th>
-                <Th>Currency</Th>
-                <Th />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-ink/8 bg-white/50">
-              {users.map((u) => (
-                <tr key={u.id}>
-                  <Td>
-                    {u.firstName} {u.lastName}
-                  </Td>
-                  <Td>{u.employeeId ?? "—"}</Td>
-                  <Td>{u.email}</Td>
-                  <Td>
-                    <Badge tone="navy">{roleLabel(u.role)}</Badge>
-                  </Td>
-                  <Td>
-                    <Badge
-                      tone={
-                        u.status === "active"
-                          ? "success"
-                          : u.status === "offboarded"
-                            ? "danger"
-                            : "warning"
-                      }
-                    >
-                      {u.status}
-                    </Badge>
-                  </Td>
-                  <Td>{u.hourlyWage ? formatCurrency(u.hourlyWage) : "—"}</Td>
-                  <Td>{u.wageCurrency ?? "—"}</Td>
-                  <Td>
-                    <Link
-                      href={`/admin/users/${u.id}`}
-                      className="text-sm font-medium text-civic-navy hover:underline"
-                    >
-                      Edit
-                    </Link>
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </DataTable>
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardBody className="space-y-5">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Roster</p>
-            <h3 className="font-display text-xl text-ink">Import names &amp; initials</h3>
-            <p className="mt-1 text-sm text-ink/55">
-              Upload an Excel with First Name, Last Name, Initials. The system assigns 5-digit
-              employee IDs and temporary passwords, then you download a credentials sheet.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="roster-file">Roster workbook</Label>
-            <Input
-              id="roster-file"
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              onChange={(e) => void onRosterFile(e.target.files?.[0] ?? null)}
-            />
-            {rosterFileName ? <p className="text-xs text-ink/55">{rosterFileName}</p> : null}
-          </div>
-          {rosterPreview.length ? (
-            <p className="text-sm text-ink/70">{rosterPreview.length} row(s) ready to import.</p>
-          ) : null}
-          <div className="flex flex-wrap items-center gap-3">
+        title={title}
+        description={description}
+        actions={
+          <div className="flex flex-wrap rounded-full border border-ink/15 bg-white/70 p-1">
             <Button
-              onClick={() => void importRoster()}
-              disabled={importingRoster || rosterPreview.length === 0}
+              size="sm"
+              variant={tab === "overview" ? "primary" : "ghost"}
+              className={tab === "overview" ? "" : "border-0 bg-transparent"}
+              onClick={() => setTab("overview")}
             >
-              {importingRoster ? "Creating accounts…" : "Create accounts"}
+              Overview
             </Button>
-            {credentials.length ? (
+            {canPayRates ? (
               <Button
-                variant="ghost"
-                onClick={() =>
-                  downloadCredentialsWorkbook(
-                    credentials,
-                    `bap-credentials-${new Date().toISOString().slice(0, 10)}.xlsx`,
-                  )
-                }
+                size="sm"
+                variant={tab === "pay-rates" ? "primary" : "ghost"}
+                className={tab === "pay-rates" ? "" : "border-0 bg-transparent"}
+                onClick={() => setTab("pay-rates")}
               >
-                Download credentials Excel
+                Pay Rates
               </Button>
             ) : null}
-            {rosterMessage ? <span className="text-sm text-success">{rosterMessage}</span> : null}
+            {canExpense ? (
+              <Button
+                size="sm"
+                variant={tab === "expense-config" ? "primary" : "ghost"}
+                className={tab === "expense-config" ? "" : "border-0 bg-transparent"}
+                onClick={() => setTab("expense-config")}
+              >
+                Car & Housing
+              </Button>
+            ) : null}
+            {canField ? (
+              <Button
+                size="sm"
+                variant={tab === "field-ops" ? "primary" : "ghost"}
+                className={tab === "field-ops" ? "" : "border-0 bg-transparent"}
+                onClick={() => setTab("field-ops")}
+              >
+                Field Operations
+              </Button>
+            ) : null}
           </div>
-        </CardBody>
-      </Card>
+        }
+      />
 
-      <Card>
-        <CardBody className="space-y-5">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Teams</p>
-            <h3 className="font-display text-xl text-ink">
-              Assign field workers to a team lead
-            </h3>
-            <p className="mt-1 text-sm text-ink/55">
-              Team leads see the ledger and dashboard for the members assigned here.
-            </p>
-          </div>
-          {leads.length === 0 ? (
-            <p className="text-sm text-ink/55">
-              Create a Team Lead user first to build a team.
-            </p>
-          ) : (
-            <>
-              <div className="max-w-sm space-y-2">
-                <Label>Team lead</Label>
-                <Select
-                  value={activeLead}
-                  onChange={(e) => setSelectedLead(e.target.value)}
+      {tab === "pay-rates" ? (
+        <PayRatesPanel />
+      ) : tab === "expense-config" ? (
+        <ExpenseConfigPanel />
+      ) : tab === "field-ops" ? (
+        <FieldOpsPanel />
+      ) : (
+        <>
+          {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
+          {loading ? <p className="text-sm text-ink/55">Loading…</p> : null}
+
+          <Card className="max-w-sm">
+            <CardBody>
+              <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Benchmark %</p>
+              <p className="font-display text-4xl tabular-nums">{benchmark}%</p>
+              {canPayRates ? (
+                <button
+                  type="button"
+                  onClick={() => setTab("pay-rates")}
+                  className="mt-3 inline-block text-sm text-civic-navy hover:underline"
                 >
-                  {leads.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.firstName} {l.lastName}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Members</Label>
-                {fieldWorkers.length === 0 ? (
-                  <p className="text-sm text-ink/55">No field workers available.</p>
-                ) : (
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {fieldWorkers.map((w) => {
-                      const checked = memberSet.includes(w.id);
-                      return (
-                        <label
-                          key={w.id}
-                          className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-4 py-3 transition ${
-                            checked
-                              ? "border-brass/50 bg-brass/10"
-                              : "border-ink/10 bg-white/50 hover:border-brass/30"
-                          }`}
-                        >
-                          <span>
-                            <span className="block text-sm font-medium text-ink">
-                              {w.firstName} {w.lastName}
-                            </span>
-                            <span className="block text-xs text-ink/55">{w.email}</span>
-                          </span>
-                          <span className="flex items-center gap-2">
-                            <Badge tone="navy">{roleLabel(w.role)}</Badge>
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleMember(w.id)}
-                              className="h-4 w-4 accent-brass"
-                            />
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <Button onClick={() => void saveTeam()} disabled={savingTeam}>
-                  {savingTeam ? "Saving…" : "Save team"}
-                </Button>
-                {teamMessage ? (
-                  <span className="text-sm text-success">{teamMessage}</span>
-                ) : null}
-              </div>
-            </>
-          )}
-        </CardBody>
-      </Card>
+                  Edit via pay rates
+                </button>
+              ) : null}
+            </CardBody>
+          </Card>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Create user">
-        <form className="space-y-4" onSubmit={(e) => void createUser(e)}>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>First name</Label>
-              <Input required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Last name</Label>
-              <Input required value={lastName} onChange={(e) => setLastName(e.target.value)} />
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Initials</Label>
-              <Input required maxLength={3} value={initials} onChange={(e) => setInitials(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <Select value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
-                {(
-                  [
-                    "super_admin",
-                    "account_admin",
-                    "team_lead",
-                    "petitioner",
-                    "validator",
-                  ] as UserRole[]
-                ).map((r) => (
-                  <option key={r} value={r}>
-                    {roleLabel(r)}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Email</Label>
-            <Input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Temporary password</Label>
-            <PasswordInput
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="new-password"
-            />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Hourly wage</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={hourlyWage}
-                onChange={(e) => setHourlyWage(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Currency</Label>
-              <Select value={currency} onChange={(e) => setCurrency(e.target.value as WageCurrency)}>
-                <option value="USD">USD</option>
-                <option value="PHP">PHP</option>
-              </Select>
-            </div>
-          </div>
-          <Button type="submit" className="w-full" disabled={saving}>
-            {saving ? "Creating…" : "Create user"}
-          </Button>
-        </form>
-      </Modal>
+          <Card>
+            <CardBody className="space-y-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Configuration</p>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <Link href="/directory" className="font-medium text-civic-navy hover:underline">
+                    Employee Directory
+                  </Link>
+                  <span className="text-ink/55"> — import employees, teams, create &amp; edit users</span>
+                </li>
+                {canPayRates ? (
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => setTab("pay-rates")}
+                      className="font-medium text-civic-navy hover:underline"
+                    >
+                      Pay Rates
+                    </button>
+                    <span className="text-ink/55"> — rates and benchmark</span>
+                  </li>
+                ) : null}
+                {canExpense ? (
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => setTab("expense-config")}
+                      className="font-medium text-civic-navy hover:underline"
+                    >
+                      Car &amp; Housing
+                    </button>
+                    <span className="text-ink/55"> — expense defaults</span>
+                  </li>
+                ) : null}
+                {canField ? (
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => setTab("field-ops")}
+                      className="font-medium text-civic-navy hover:underline"
+                    >
+                      Field Operations
+                    </button>
+                    <span className="text-ink/55"> — offices and field settings</span>
+                  </li>
+                ) : null}
+              </ul>
+            </CardBody>
+          </Card>
+        </>
+      )}
     </div>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense fallback={<div className="py-20 text-center">Loading admin…</div>}>
+      <AdminContent />
+    </Suspense>
   );
 }

@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     if (!person?.email) continue;
 
     const subject = `Checkout reminder: ${prop?.name ?? "lodging"}`;
-    const body = `Hi ${person.first_name}, please confirm checkout for ${prop?.name ?? "your stay"} (room ${row.room_number}). Reply in Field Ops if already checked out.`;
+    const body = `Hi ${person.first_name}, please confirm checkout for ${prop?.name ?? "your stay"} (room ${row.room_number}). Reply in Field Operations if already checked out.`;
 
     let sms: Awaited<ReturnType<typeof sendTwilioSms>> | null = null;
     if (twilioConfigured() && person.phone) {
