@@ -164,8 +164,11 @@ export function ExpenseConfigPanel() {
             </CardBody>
           </Card>
           <Card>
-            <CardHeader><h2 className="font-display text-xl text-ink">Housing</h2></CardHeader>
+            <CardHeader><h2 className="font-display text-xl text-ink">Housing allowance</h2></CardHeader>
             <CardBody className="space-y-4">
+              <p className="text-xs text-ink/55">
+                Flat allowance suggestion only. Shared Airbnb and hotel stays use daily share on the expense form.
+              </p>
               <div className="space-y-2">
                 <Label>Standard rate</Label>
                 <div className="flex gap-2">

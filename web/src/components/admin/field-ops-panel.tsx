@@ -9,15 +9,14 @@ import { Select } from "@/components/ui/select";
 import { DataTable, Td, Th } from "@/components/ui/data-table";
 import { listProfiles } from "@/lib/api/live";
 import {
-  checkInLodging,
   checkOutLodging,
   createLodgingProperty,
   listActiveCarExpenses,
   listLodgingProperties,
   listOpenLodgingOccupancies,
+  mergeLodgingProperties,
   updateExpenseTolls,
 } from "@/lib/api/remodel";
-import { lodgingDailyShare } from "@/lib/payroll-math";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { DemoUser, LodgingKind, LodgingOccupancy, LodgingProperty } from "@/lib/types";
 
@@ -30,16 +29,15 @@ export function FieldOpsPanel() {
   const [occupancies, setOccupancies] = useState<LodgingOccupancy[]>([]);
   const [people, setPeople] = useState<DemoUser[]>([]);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [tollDraft, setTollDraft] = useState<Record<string, string>>({});
   const [kind, setKind] = useState<LodgingKind>("airbnb");
   const [propName, setPropName] = useState("");
   const [dailyTotal, setDailyTotal] = useState("");
   const [roomCount, setRoomCount] = useState("5");
   const [roomRate, setRoomRate] = useState("");
-  const [propertyId, setPropertyId] = useState("");
-  const [userId, setUserId] = useState("");
-  const [roomNumber, setRoomNumber] = useState("");
-  const [occupants, setOccupants] = useState("1");
+  const [keepId, setKeepId] = useState("");
+  const [mergeId, setMergeId] = useState("");
 
   async function load() {
     setError("");
@@ -54,8 +52,7 @@ export function FieldOpsPanel() {
       setProperties(props);
       setOccupancies(occ);
       setPeople(profiles);
-      if (!propertyId && props[0]) setPropertyId(props[0].id);
-      if (!userId && profiles[0]) setUserId(profiles[0].id);
+      if (!keepId && props[0]) setKeepId(props[0].id);
       const tolls: Record<string, string> = {};
       for (const car of carRows) {
         tolls[car.id as string] = String(car.tolls_amount ?? 0);
@@ -82,6 +79,7 @@ export function FieldOpsPanel() {
   });
 
   async function createProperty() {
+    setMessage("");
     try {
       await createLodgingProperty({
         kind,
@@ -91,40 +89,36 @@ export function FieldOpsPanel() {
         roomRate: kind === "hotel" ? parseFloat(roomRate) || 0 : null,
       });
       setPropName("");
+      setMessage("Property saved. Circulators can pick it when recording expenses.");
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not create property.");
     }
   }
 
-  async function doCheckIn() {
-    const prop = properties.find((p) => p.id === propertyId);
-    if (!prop) return;
-    const dailyAmount = lodgingDailyShare({
-      kind: prop.kind,
-      dailyTotal: prop.dailyTotal,
-      roomCount: prop.roomCount,
-      roomRate: prop.roomRate,
-      occupantsInRoom: parseInt(occupants, 10) || 1,
-    });
+  async function doMerge() {
+    if (!keepId || !mergeId || keepId === mergeId) {
+      setError("Pick two different properties to merge.");
+      return;
+    }
+    setMessage("");
     try {
-      await checkInLodging({
-        propertyId,
-        userId,
-        roomNumber,
-        occupantsInRoom: parseInt(occupants, 10) || 1,
-        checkInAt: new Date().toISOString(),
-        dailyAmount,
-      });
+      await mergeLodgingProperties(keepId, mergeId);
+      setMergeId("");
+      setMessage("Properties merged.");
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not check in.");
+      setError(e instanceof Error ? e.message : "Could not merge properties.");
     }
   }
 
   return (
     <div className="space-y-6">
+      <p className="text-sm text-ink/65">
+        Live occupancy board from circulator expenses. Stays appear when someone records an Airbnb or hotel expense. Check-in is not done here.
+      </p>
       {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
+      {message ? <p className="rounded-xl bg-success/10 px-4 py-3 text-sm text-success">{message}</p> : null}
 
       <div className="flex flex-wrap gap-2">
         {(
@@ -202,9 +196,12 @@ export function FieldOpsPanel() {
       ) : (
         <>
           <Card>
-            <CardBody className="grid gap-4 md:grid-cols-2">
+            <CardBody className="grid gap-6 md:grid-cols-2">
               <div className="space-y-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Add property</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Seed property catalog</p>
+                <p className="text-xs text-ink/55">
+                  Optional. Circulators can also create names when recording an expense.
+                </p>
                 <Select value={kind} onChange={(e) => setKind(e.target.value as LodgingKind)}>
                   <option value="airbnb">Airbnb</option>
                   <option value="hotel">Hotel</option>
@@ -218,30 +215,41 @@ export function FieldOpsPanel() {
                 ) : (
                   <Input placeholder="Room rate" value={roomRate} onChange={(e) => setRoomRate(e.target.value)} />
                 )}
-                <Button onClick={() => void createProperty()}>Create property</Button>
+                <Button onClick={() => void createProperty()} disabled={!propName.trim()}>
+                  Save property
+                </Button>
               </div>
               <div className="space-y-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Check in</p>
-                <Select value={propertyId} onChange={(e) => setPropertyId(e.target.value)}>
-                  {filteredProps.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </Select>
-                <Select value={userId} onChange={(e) => setUserId(e.target.value)}>
-                  {people.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.firstName} {p.lastName}
-                    </option>
-                  ))}
-                </Select>
-                <Input placeholder="Room #" value={roomNumber} onChange={(e) => setRoomNumber(e.target.value)} />
+                <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Merge duplicates</p>
+                <p className="text-xs text-ink/55">
+                  Move all open stays onto the keep property, then remove the duplicate name.
+                </p>
                 <div className="space-y-2">
-                  <Label>Occupants in room</Label>
-                  <Input value={occupants} onChange={(e) => setOccupants(e.target.value)} />
+                  <Label>Keep</Label>
+                  <Select value={keepId} onChange={(e) => setKeepId(e.target.value)}>
+                    {filteredProps.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </Select>
                 </div>
-                <Button onClick={() => void doCheckIn()}>Check in</Button>
+                <div className="space-y-2">
+                  <Label>Merge away</Label>
+                  <Select value={mergeId} onChange={(e) => setMergeId(e.target.value)}>
+                    <option value="">Select duplicate</option>
+                    {filteredProps
+                      .filter((p) => p.id !== keepId)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                  </Select>
+                </div>
+                <Button variant="ghost" onClick={() => void doMerge()} disabled={!mergeId}>
+                  Merge properties
+                </Button>
               </div>
             </CardBody>
           </Card>
@@ -267,7 +275,7 @@ export function FieldOpsPanel() {
                       <tr key={occ.id}>
                         <Td>{prop?.name ?? "—"}</Td>
                         <Td>{names[occ.userId] ?? "Unknown"}</Td>
-                        <Td>{occ.roomNumber}</Td>
+                        <Td>{occ.roomNumber || "—"}</Td>
                         <Td>{occ.occupantsInRoom}</Td>
                         <Td>{formatDate(occ.checkInAt.slice(0, 10))}</Td>
                         <Td align="right">
@@ -281,7 +289,7 @@ export function FieldOpsPanel() {
                                 void checkOutLodging({ occupancyId: occ.id }).then(load)
                               }
                             >
-                              Check out now
+                              Force check out
                             </Button>
                             <Button
                               size="sm"
@@ -303,6 +311,15 @@ export function FieldOpsPanel() {
                       </tr>
                     );
                   })}
+                  {filteredOcc.length === 0 ? (
+                    <tr>
+                      <Td colSpan={7}>
+                        <p className="py-6 text-center text-sm text-ink/50">
+                          No open stays. They appear when circulators record {tab === "airbnb" ? "Airbnb" : "hotel"} expenses.
+                        </p>
+                      </Td>
+                    </tr>
+                  ) : null}
                 </tbody>
               </DataTable>
             </CardBody>

@@ -373,24 +373,62 @@ export async function setUserSubAccount(userId: string, subAccountId: string) {
   if (error) throw error;
 }
 
-export async function listLodgingProperties() {
+function mapLodgingProperty(row: {
+  id: string;
+  kind: string;
+  name: string;
+  address: string | null;
+  daily_total: number | string | null;
+  room_count: number | null;
+  room_rate: number | string | null;
+}): LodgingProperty {
+  return {
+    id: row.id,
+    kind: row.kind as LodgingKind,
+    name: row.name,
+    address: row.address,
+    dailyTotal: row.daily_total == null ? null : num(row.daily_total),
+    roomCount: row.room_count,
+    roomRate: row.room_rate == null ? null : num(row.room_rate),
+  };
+}
+
+function mapLodgingOccupancy(row: {
+  id: string;
+  property_id: string;
+  user_id: string;
+  room_number: string;
+  occupants_in_room: number;
+  check_in_at: string;
+  check_out_at: string | null;
+  check_out_date: string | null;
+  check_out_backdated: boolean;
+  daily_amount: number | string | null;
+}): LodgingOccupancy {
+  return {
+    id: row.id,
+    propertyId: row.property_id,
+    userId: row.user_id,
+    roomNumber: row.room_number,
+    occupantsInRoom: row.occupants_in_room,
+    checkInAt: row.check_in_at,
+    checkOutAt: row.check_out_at,
+    checkOutDate: row.check_out_date,
+    checkOutBackdated: !!row.check_out_backdated,
+    dailyAmount: row.daily_amount == null ? null : num(row.daily_amount),
+  };
+}
+
+export async function listLodgingProperties(kind?: LodgingKind) {
   const supabase = createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("lodging_properties")
     .select("id, kind, name, address, daily_total, room_count, room_rate")
     .order("name");
+  if (kind) query = query.eq("kind", kind);
+  const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []).map(
-    (row): LodgingProperty => ({
-      id: row.id,
-      kind: row.kind as LodgingKind,
-      name: row.name,
-      address: row.address,
-      dailyTotal: row.daily_total == null ? null : num(row.daily_total),
-      roomCount: row.room_count,
-      roomRate: row.room_rate == null ? null : num(row.room_rate),
-    }),
-  );
+  return (data ?? []).map(mapLodgingProperty);
 }
 
 export async function createLodgingProperty(input: {
@@ -402,25 +440,30 @@ export async function createLodgingProperty(input: {
   roomRate?: number | null;
 }) {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("lodging_properties")
-    .insert({
-      kind: input.kind,
-      name: input.name,
-      address: input.address ?? null,
-      daily_total: input.dailyTotal ?? null,
-      room_count: input.roomCount ?? null,
-      room_rate: input.roomRate ?? null,
-    })
-    .select("id")
-    .single();
+  const { data, error } = await supabase.rpc("find_or_create_lodging_property", {
+    p_kind: input.kind,
+    p_name: input.name,
+    p_daily_total: input.dailyTotal ?? null,
+    p_room_count: input.roomCount ?? null,
+    p_room_rate: input.roomRate ?? null,
+    p_address: input.address ?? null,
+  });
   if (error) throw error;
-  return data.id as string;
+  return (data as { id: string }).id;
 }
 
-export async function listOpenLodgingOccupancies() {
+export async function mergeLodgingProperties(keepId: string, mergeId: string) {
   const supabase = createClient();
-  const { data, error } = await supabase
+  const { error } = await supabase.rpc("merge_lodging_properties", {
+    p_keep_id: keepId,
+    p_merge_id: mergeId,
+  });
+  if (error) throw error;
+}
+
+export async function listOpenLodgingOccupancies(userId?: string) {
+  const supabase = createClient();
+  let query = supabase
     .from("lodging_occupancies")
     .select(
       "id, property_id, user_id, room_number, occupants_in_room, check_in_at, check_out_at, check_out_date, check_out_backdated, daily_amount",
@@ -428,46 +471,47 @@ export async function listOpenLodgingOccupancies() {
     .is("check_out_at", null)
     .is("check_out_date", null)
     .order("check_in_at", { ascending: false });
+  if (userId) query = query.eq("user_id", userId);
+  const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []).map(
-    (row): LodgingOccupancy => ({
-      id: row.id,
-      propertyId: row.property_id,
-      userId: row.user_id,
-      roomNumber: row.room_number,
-      occupantsInRoom: row.occupants_in_room,
-      checkInAt: row.check_in_at,
-      checkOutAt: row.check_out_at,
-      checkOutDate: row.check_out_date,
-      checkOutBackdated: !!row.check_out_backdated,
-      dailyAmount: row.daily_amount == null ? null : num(row.daily_amount),
-    }),
-  );
+  return (data ?? []).map(mapLodgingOccupancy);
 }
 
-export async function checkInLodging(input: {
-  propertyId: string;
-  userId: string;
+export async function createLodgingExpense(input: {
+  kind: LodgingKind;
+  propertyId?: string | null;
+  propertyName?: string | null;
+  dailyTotal?: number | null;
+  roomCount?: number | null;
+  roomRate?: number | null;
   roomNumber: string;
   occupantsInRoom: number;
-  checkInAt: string;
-  dailyAmount: number;
+  checkInDate: string;
+  checkOutDate?: string | null;
+  amount?: number | null;
+  issueId?: string | null;
+  receiptPath?: string | null;
+  userId?: string | null;
 }) {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("lodging_occupancies")
-    .insert({
-      property_id: input.propertyId,
-      user_id: input.userId,
-      room_number: input.roomNumber,
-      occupants_in_room: input.occupantsInRoom,
-      check_in_at: input.checkInAt,
-      daily_amount: input.dailyAmount,
-    })
-    .select("id")
-    .single();
+  const { data, error } = await supabase.rpc("create_lodging_expense", {
+    p_kind: input.kind,
+    p_property_id: input.propertyId ?? null,
+    p_property_name: input.propertyName ?? null,
+    p_daily_total: input.dailyTotal ?? null,
+    p_room_count: input.roomCount ?? null,
+    p_room_rate: input.roomRate ?? null,
+    p_room_number: input.roomNumber,
+    p_occupants_in_room: input.occupantsInRoom,
+    p_check_in_date: input.checkInDate,
+    p_check_out_date: input.checkOutDate ?? null,
+    p_amount: input.amount ?? null,
+    p_issue_id: input.issueId ?? null,
+    p_receipt_path: input.receiptPath ?? null,
+    p_user_id: input.userId ?? null,
+  });
   if (error) throw error;
-  return data.id as string;
+  return data as Record<string, unknown>;
 }
 
 export async function checkOutLodging(input: {
@@ -477,15 +521,13 @@ export async function checkOutLodging(input: {
   backdated?: boolean;
 }) {
   const supabase = createClient();
-  const { error } = await supabase
-    .from("lodging_occupancies")
-    .update({
-      check_out_at: input.backdated ? null : input.checkOutAt ?? new Date().toISOString(),
-      check_out_date: input.backdated ? input.checkOutDate : null,
-      check_out_backdated: !!input.backdated,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", input.occupancyId);
+  const { error } = await supabase.rpc("checkout_lodging_stay", {
+    p_occupancy_id: input.occupancyId,
+    p_check_out_date:
+      input.checkOutDate ??
+      (input.checkOutAt ? input.checkOutAt.slice(0, 10) : new Date().toISOString().slice(0, 10)),
+    p_backdated: !!input.backdated,
+  });
   if (error) throw error;
 }
 
@@ -542,6 +584,153 @@ export function resolveCirculatorUserId(
   if (byFull) return byFull.id;
   const byLast = profiles.find((p) => p.lastName.toLowerCase() === search);
   return byLast?.id ?? null;
+}
+
+export function resolveCirculatorFromReportRow(
+  row: { firstName: string; lastName: string; initials: string },
+  profiles: { id: string; initials: string; firstName: string; lastName: string }[],
+) {
+  const initials = row.initials.trim().toUpperCase();
+  if (initials) {
+    const byInitials = profiles.filter((p) => p.initials.toUpperCase() === initials);
+    if (byInitials.length === 1) return byInitials[0].id;
+    if (byInitials.length > 1) {
+      const byName = byInitials.find(
+        (p) =>
+          p.firstName.toLowerCase() === row.firstName.trim().toLowerCase() &&
+          p.lastName.toLowerCase() === row.lastName.trim().toLowerCase(),
+      );
+      if (byName) return byName.id;
+    }
+  }
+  const byFull = profiles.find(
+    (p) =>
+      p.firstName.toLowerCase() === row.firstName.trim().toLowerCase() &&
+      p.lastName.toLowerCase() === row.lastName.trim().toLowerCase(),
+  );
+  return byFull?.id ?? null;
+}
+
+export async function ensureTurnInColumns(turnInId: string, pricedLineIds: string[]) {
+  const existing = await listTurnInColumns(turnInId);
+  const have = new Set(existing.map((c) => c.pricedLineId));
+  const missing = pricedLineIds.filter((id) => !have.has(id));
+  if (!missing.length) return existing;
+  const supabase = createClient();
+  const start = existing.length;
+  const { error } = await supabase.from("turn_in_petition_columns").insert(
+    missing.map((pricedLineId, index) => ({
+      turn_in_id: turnInId,
+      priced_line_id: pricedLineId,
+      sort_order: start + index,
+    })),
+  );
+  if (error) throw error;
+  return listTurnInColumns(turnInId);
+}
+
+export async function importTurnInReport(input: {
+  parsed: import("@/lib/turn-in-report-excel").TurnInReportParseResult;
+  benchmarkPct?: number;
+  profiles: { id: string; initials: string; firstName: string; lastName: string }[];
+}) {
+  const benchmarkPct = input.benchmarkPct ?? 75;
+  let lines = await listPricedPetitionLines();
+  const lineByCode = new Map(lines.map((l) => [l.code.toUpperCase(), l]));
+
+  const neededCodes = new Map<string, { code: string; pay: number; name: string }>();
+  for (const issue of input.parsed.issues) {
+    for (const col of issue.columns) {
+      const key = col.code.toUpperCase();
+      if (!neededCodes.has(key)) {
+        neededCodes.set(key, {
+          code: col.code,
+          pay: col.pay,
+          name: col.legalName || input.parsed.codeNames[key] || col.code,
+        });
+      }
+    }
+  }
+
+  for (const needed of neededCodes.values()) {
+    if (lineByCode.has(needed.code.toUpperCase())) continue;
+    await savePricedPetitionLine({
+      name: needed.name,
+      code: needed.code,
+      pay: needed.pay,
+      lotusPay: needed.pay,
+    });
+  }
+
+  lines = await listPricedPetitionLines();
+  for (const line of lines) lineByCode.set(line.code.toUpperCase(), line);
+
+  const turnIns = await listTurnIns();
+  const turnInByNumber = new Map(turnIns.map((t) => [t.turnInNumber.toUpperCase(), t]));
+
+  let createdTurnIns = 0;
+  let updatedEntries = 0;
+  const unmatched: string[] = [];
+  const unmatchedSet = new Set<string>();
+
+  for (const issue of input.parsed.issues) {
+    const pricedIds = issue.columns
+      .map((c) => lineByCode.get(c.code.toUpperCase())?.id)
+      .filter((id): id is string => !!id);
+
+    let turnIn = turnInByNumber.get(issue.turnInNumber.toUpperCase());
+    if (!turnIn) {
+      const id = await createTurnIn({
+        turnInNumber: issue.turnInNumber,
+        name: issue.turnInNumber,
+        state: input.parsed.state,
+        turnInDate: null,
+        benchmarkPct,
+        pricedLineIds: pricedIds,
+      });
+      createdTurnIns += 1;
+      turnIn = {
+        id,
+        turnInNumber: issue.turnInNumber,
+        name: issue.turnInNumber,
+        state: input.parsed.state,
+        turnInDate: null,
+        benchmarkPct,
+      };
+      turnInByNumber.set(issue.turnInNumber.toUpperCase(), turnIn);
+    }
+
+    const columns = await ensureTurnInColumns(turnIn.id, pricedIds);
+    const columnByCode = new Map(columns.map((c) => [c.code.toUpperCase(), c]));
+
+    for (const entry of issue.entries) {
+      const userId = resolveCirculatorFromReportRow(entry, input.profiles);
+      if (!userId) {
+        const label = `${entry.firstName} ${entry.lastName} (${entry.initials})`.trim();
+        if (!unmatchedSet.has(label)) {
+          unmatchedSet.add(label);
+          unmatched.push(label);
+        }
+        continue;
+      }
+      const column = columnByCode.get(entry.code.toUpperCase());
+      if (!column) continue;
+      await upsertTurnInEntry({
+        columnId: column.id,
+        userId,
+        sigs: entry.sigs,
+        books: entry.books,
+      });
+      updatedEntries += 1;
+    }
+  }
+
+  return {
+    createdTurnIns,
+    updatedEntries,
+    unmatched,
+    issueCount: input.parsed.issues.length,
+  };
 }
 
 export async function importTurnInValidityRows(input: {

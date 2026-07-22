@@ -25,7 +25,12 @@ import {
   listProfiles,
   type PayrollBalance,
 } from "@/lib/api/live";
-import type { DemoUser, Expense } from "@/lib/types";
+import {
+  checkOutLodging,
+  listLodgingProperties,
+  listOpenLodgingOccupancies,
+} from "@/lib/api/remodel";
+import type { DemoUser, Expense, LodgingOccupancy, LodgingProperty } from "@/lib/types";
 
 const emptyBalance: PayrollBalance = {
   totalPay: 0,
@@ -45,8 +50,11 @@ function PayrollContent() {
   const [selected, setSelected] = useState("");
   const [balance, setBalance] = useState<PayrollBalance>(emptyBalance);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [openStays, setOpenStays] = useState<LodgingOccupancy[]>([]);
+  const [properties, setProperties] = useState<LodgingProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [checkingOut, setCheckingOut] = useState<string | null>(null);
 
   const lockedToSelf = user ? isFieldRole(user.role) : false;
   const showPayments = user ? canAccessPayments(user.role) : false;
@@ -67,12 +75,16 @@ function PayrollContent() {
             ? selected
             : people[0]?.id ?? authUserId(user);
       if (!selected || lockedToSelf) setSelected(target);
-      const [bal, rows] = await Promise.all([
+      const [bal, rows, stays, props] = await Promise.all([
         getExpenseBalance(target),
         listExpenses(target),
+        listOpenLodgingOccupancies(lockedToSelf ? authUserId(user) : target),
+        listLodgingProperties(),
       ]);
       setBalance(bal);
       setExpenses(rows);
+      setOpenStays(stays);
+      setProperties(props);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load payroll.");
     } finally {
@@ -94,7 +106,22 @@ function PayrollContent() {
     router.push(qs ? `/payroll?${qs}` : "/payroll");
   }
 
+  async function handleCheckout(occupancyId: string) {
+    setCheckingOut(occupancyId);
+    setError("");
+    try {
+      await checkOutLodging({ occupancyId });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not check out.");
+    } finally {
+      setCheckingOut(null);
+    }
+  }
+
   const subject = profiles.find((p) => p.id === selected) ?? user;
+  const propertyName = (propertyId: string) =>
+    properties.find((p) => p.id === propertyId)?.name ?? "Property";
 
   return (
     <div className="space-y-8">
@@ -179,6 +206,50 @@ function PayrollContent() {
               <CardBody className="flex items-center gap-3">
                 <Badge tone="danger">Negative balance</Badge>
                 <p className="text-sm text-danger">Expenses exceed upfront allocation this month.</p>
+              </CardBody>
+            </Card>
+          ) : null}
+          {openStays.length > 0 ? (
+            <Card>
+              <CardBody className="space-y-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Open stays</p>
+                  <p className="mt-1 text-sm text-ink/60">
+                    Checked in via Airbnb or hotel expense. Check out when you leave.
+                  </p>
+                </div>
+                <DataTable>
+                  <thead>
+                    <tr>
+                      <Th>Property</Th>
+                      <Th>Room</Th>
+                      <Th>Check-in</Th>
+                      <Th align="right">Daily share</Th>
+                      <Th />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-ink/8 bg-white/50">
+                    {openStays.map((stay) => (
+                      <tr key={stay.id}>
+                        <Td>{propertyName(stay.propertyId)}</Td>
+                        <Td>{stay.roomNumber || "—"}</Td>
+                        <Td>{formatDate(stay.checkInAt.slice(0, 10))}</Td>
+                        <Td align="right">
+                          {stay.dailyAmount != null ? formatCurrency(stay.dailyAmount) : "—"}
+                        </Td>
+                        <Td>
+                          <Button
+                            size="sm"
+                            disabled={checkingOut === stay.id}
+                            onClick={() => void handleCheckout(stay.id)}
+                          >
+                            {checkingOut === stay.id ? "Checking out…" : "Check out"}
+                          </Button>
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </DataTable>
               </CardBody>
             </Card>
           ) : null}

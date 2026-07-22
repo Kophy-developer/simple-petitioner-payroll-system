@@ -76,7 +76,7 @@ function AdminContent() {
       : tab === "expense-config"
         ? "Standard rates plus optional per-issue overrides."
         : tab === "field-ops"
-          ? "Active cars, Airbnbs, and hotels. Map comes later; this view is the live occupancy board."
+          ? "Live board of active cars and lodging from circulator expenses. Seed or merge property names here; check-in happens when expenses are recorded."
           : "System settings. People management lives in Employee Directory.";
 
   return (

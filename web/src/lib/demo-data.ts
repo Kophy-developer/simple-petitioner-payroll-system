@@ -127,10 +127,10 @@ export const expenseConfig: ExpenseConfig = {
 export const expenseTypeLabels: Record<Expense["type"], string> = {
   upfront_draw: "Upfront Draw",
   chargeback: "Chargeback",
-  hotel_travel: "Hotel / Travel",
+  hotel_travel: "Hotel",
   health: "Health",
   car_rental: "Car Rental",
-  housing: "Housing",
+  housing: "Airbnb",
   flight: "Flight",
   other: "Other",
 };

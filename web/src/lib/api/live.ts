@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { createLodgingExpense as createLodgingExpenseRpc } from "@/lib/api/remodel";
 import type {
   DemoUser,
   Expense,
@@ -344,6 +345,37 @@ export async function createExpense(input: {
   });
   if (error) throw error;
   return mapExpense(data);
+}
+
+export async function createLodgingExpense(input: {
+  kind: "airbnb" | "hotel";
+  propertyId?: string | null;
+  propertyName?: string | null;
+  dailyTotal?: number | null;
+  roomCount?: number | null;
+  roomRate?: number | null;
+  roomNumber: string;
+  occupantsInRoom: number;
+  checkInDate: string;
+  checkOutDate?: string | null;
+  amount?: number | null;
+  issueId?: string | null;
+  receiptPath?: string | null;
+  userId?: string | null;
+}) {
+  const data = await createLodgingExpenseRpc(input);
+  return mapExpense(
+    data as {
+      id: string;
+      user_id: string;
+      issue_id: string | null;
+      type: ExpenseType;
+      amount: number;
+      receipt_path: string | null;
+      expense_date: string;
+      end_date: string | null;
+    },
+  );
 }
 
 export async function suggestedExpenseAmount(type: ExpenseType, issueId?: string | null) {
