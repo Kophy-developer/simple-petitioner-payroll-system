@@ -57,7 +57,7 @@ export default function OnboardingContactPage() {
       <PageHeader
         eyebrow="Setup"
         title="Add your contact info"
-        description="Email and phone are used for login recovery and OTP codes."
+        description="Add your email and phone."
       />
       {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
       <Card>

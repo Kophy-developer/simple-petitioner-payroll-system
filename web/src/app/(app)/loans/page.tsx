@@ -110,7 +110,7 @@ export default function LoansPage() {
       <PageHeader
         eyebrow="Payroll"
         title="Loans & Advances"
-        description={isAdmin ? "Open a request to review full details before approving or rejecting." : "Request an advance against your hold reserve."}
+        description={isAdmin ? "Review loan and advance requests." : "Request a loan or advance."}
       />
       {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
       {loading ? <p className="text-sm text-ink/55">Loading live loan data…</p> : null}

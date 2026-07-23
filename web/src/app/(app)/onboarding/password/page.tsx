@@ -52,7 +52,7 @@ export default function OnboardingPasswordPage() {
       <PageHeader
         eyebrow="Setup"
         title="Create your password"
-        description="Your temporary password must be changed before you continue."
+        description="Choose a new password to continue."
       />
       {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
       <Card>

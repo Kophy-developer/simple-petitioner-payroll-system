@@ -275,7 +275,7 @@ export default function ValidityPage() {
       <PageHeader
         eyebrow="Collection"
         title="Validity Records"
-        description="Upload Excel or enter rows manually. Matched rows recalculate ledger pay."
+        description="Enter or upload validity results."
       />
 
       {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}

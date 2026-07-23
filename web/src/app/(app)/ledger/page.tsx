@@ -232,10 +232,10 @@ function LedgerContent() {
         title="Circulator Ledger"
         description={
           view === "lotus"
-            ? "Lotus partner sub-account. Circulators on Lotus are paid the Lotus rate (markup is their profit)."
+            ? "Lotus team pay ledger."
             : view === "all"
-              ? "Summary of all circulators you can view. Open a person for issue-level detail."
-              : "Issue-sectioned pay loaded from the database."
+              ? "All circulator ledgers."
+              : "Pay by turn-in and column."
         }
         actions={
           multiUser ? (

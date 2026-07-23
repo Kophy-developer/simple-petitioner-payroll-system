@@ -72,12 +72,12 @@ function AdminContent() {
 
   const description =
     tab === "pay-rates"
-      ? "Per petition / issue pay rates and the system-wide payable benchmark."
+      ? "Set pay rates and benchmark."
       : tab === "expense-config"
-        ? "Standard rates plus optional per-issue overrides."
+        ? "Set car and housing rates."
         : tab === "field-ops"
-          ? "Live board of active cars and lodging from circulator expenses. Seed or merge property names here; check-in happens when expenses are recorded."
-          : "System settings. People management lives in Employee Directory.";
+          ? "View active cars and lodging."
+          : "System settings and shortcuts.";
 
   return (
     <div className="space-y-8">

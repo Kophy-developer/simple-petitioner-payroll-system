@@ -166,7 +166,7 @@ export default function LoanDetailPage({ params }: { params: Promise<{ id: strin
       <PageHeader
         eyebrow="Payroll"
         title="Advance request"
-        description="Review the full request before taking action."
+        description="Review and act on this request."
         actions={
           <Link href="/loans" className="text-sm text-civic-navy hover:underline">
             Back to queue

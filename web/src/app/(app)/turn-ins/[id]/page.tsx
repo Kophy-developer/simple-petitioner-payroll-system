@@ -118,7 +118,7 @@ export default function TurnInDetailPage() {
       <PageHeader
         eyebrow="Turn-in"
         title={turnIn.turnInNumber}
-        description={`${turnIn.name} · Benchmark ${turnIn.benchmarkPct}% · Enter Sigs and Books per priced column.`}
+        description={`Benchmark ${turnIn.benchmarkPct}% · Enter sigs and books.`}
       />
       {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
       {message ? <p className="rounded-xl bg-success/10 px-4 py-3 text-sm text-success">{message}</p> : null}

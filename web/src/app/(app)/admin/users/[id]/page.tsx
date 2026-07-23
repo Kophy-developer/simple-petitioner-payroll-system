@@ -88,7 +88,7 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
       <PageHeader
         eyebrow="Admin"
         title={`Edit ${user.firstName} ${user.lastName}`}
-        description="Role, status, wage, and currency."
+        description="Edit this employee."
         actions={
           <Link href="/directory" className="text-sm text-civic-navy hover:underline">
             Back to directory

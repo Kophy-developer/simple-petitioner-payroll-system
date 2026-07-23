@@ -259,7 +259,7 @@ export default function TurnInsPage() {
       <PageHeader
         eyebrow="Collection"
         title="Turn-ins"
-        description="A turn-in is each time signatures are collected from the team (usually weekly). Numbers use the state and collection date, for example CO-07-04. Petition columns (ROAD, TAX, GAS) are mapped separately."
+        description="Create, import, and open turn-in grids."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button
@@ -349,9 +349,7 @@ export default function TurnInsPage() {
 
       <Modal open={mapOpen} onClose={() => setMapOpen(false)} title="Petition name mapping">
         <div className="space-y-4">
-          <p className="text-sm text-ink/65">
-            Map the short code used in turn-in grids to official state names, OnTarget names, and client report names. Petitions do not always share one number or wording across systems.
-          </p>
+          <p className="text-sm text-ink/65">Map internal codes to official, OnTarget, and client names.</p>
           <DataTable>
             <thead>
               <tr>
@@ -390,7 +388,7 @@ export default function TurnInsPage() {
       <Modal open={uploadOpen} onClose={() => setUploadOpen(false)} title="Upload turn-in report">
         <div className="space-y-4">
           <p className="text-sm text-ink/65">
-            Legacy Excel sheets like CO-01 still parse. Set each sheet’s collection date to rename it to the date system (CO-07-04). Leave the date blank to keep the sheet number.
+            Upload a turn-in workbook. Set a collection date to use STATE-MM-DD numbers.
           </p>
           <div className="space-y-2">
             <Label htmlFor="turn-in-report">Excel workbook</Label>
@@ -533,7 +531,7 @@ export default function TurnInsPage() {
           <div className="space-y-2">
             <Label>Turn-in number</Label>
             <Input value={turnInNumber} readOnly />
-            <p className="text-xs text-ink/50">Generated as STATE-MM-DD from the collection date (example CO-07-04).</p>
+            <p className="text-xs text-ink/50">Uses state and date, e.g. CO-07-04.</p>
           </div>
           <div className="space-y-2">
             <Label>Display name</Label>

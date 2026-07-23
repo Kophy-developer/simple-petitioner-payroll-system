@@ -79,7 +79,7 @@ function ReportContent() {
       <PageHeader
         eyebrow="Collection"
         title="Issue Report"
-        description="Print-ready preview. Use Print / PDF to save or export."
+        description="Preview and print reports."
         actions={
           <div className="flex flex-wrap items-end gap-3 print:hidden">
             <div className="w-48 space-y-2">

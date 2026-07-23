@@ -114,9 +114,7 @@ export function FieldOpsPanel() {
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-ink/65">
-        Live occupancy board from circulator expenses. Stays appear when someone records an Airbnb or hotel expense. Check-in is not done here.
-      </p>
+      <p className="text-sm text-ink/65">Active cars and lodging from expenses.</p>
       {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
       {message ? <p className="rounded-xl bg-success/10 px-4 py-3 text-sm text-success">{message}</p> : null}
 
@@ -199,9 +197,7 @@ export function FieldOpsPanel() {
             <CardBody className="grid gap-6 md:grid-cols-2">
               <div className="space-y-3">
                 <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Seed property catalog</p>
-                <p className="text-xs text-ink/55">
-                  Optional. Circulators can also create names when recording an expense.
-                </p>
+                <p className="text-xs text-ink/55">Add a property name for the catalog.</p>
                 <Select value={kind} onChange={(e) => setKind(e.target.value as LodgingKind)}>
                   <option value="airbnb">Airbnb</option>
                   <option value="hotel">Hotel</option>
@@ -221,9 +217,7 @@ export function FieldOpsPanel() {
               </div>
               <div className="space-y-3">
                 <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Merge duplicates</p>
-                <p className="text-xs text-ink/55">
-                  Move all open stays onto the keep property, then remove the duplicate name.
-                </p>
+                <p className="text-xs text-ink/55">Combine duplicate property names.</p>
                 <div className="space-y-2">
                   <Label>Keep</Label>
                   <Select value={keepId} onChange={(e) => setKeepId(e.target.value)}>

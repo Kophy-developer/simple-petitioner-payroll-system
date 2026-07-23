@@ -103,7 +103,7 @@ export default function DashboardPage() {
       <PageHeader
         eyebrow="Overview"
         title={`Welcome, ${user.firstName}`}
-        description="Live payroll signals and workspace shortcuts."
+        description="Overview and shortcuts."
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

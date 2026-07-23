@@ -221,7 +221,7 @@ export default function DirectoryPage() {
       <PageHeader
         eyebrow="People"
         title="Employee Directory"
-        description="Import employees, team assignment, and employee accounts."
+        description="Manage employees, import, and teams."
         actions={
           canCreate ? (
             <Button onClick={() => setOpen(true)}>Create user</Button>

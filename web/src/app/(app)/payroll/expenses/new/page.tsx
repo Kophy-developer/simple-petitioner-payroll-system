@@ -257,7 +257,7 @@ export default function NewExpensePage() {
       <PageHeader
         eyebrow="Payroll"
         title="Add Expense"
-        description="Log a receipt-backed expense. Airbnb and hotel stays check you in on Field Operations automatically."
+        description="Add an expense with optional receipt."
         actions={
           <Link href="/payroll" className="text-sm text-civic-navy hover:underline">
             Back to payroll
@@ -347,7 +347,7 @@ export default function NewExpensePage() {
                     <p className="self-center text-xs text-success">Using existing property</p>
                   ) : null}
                   {creatingProperty ? (
-                    <p className="self-center text-xs text-ink/55">Creates catalog entry for everyone</p>
+                    <p className="self-center text-xs text-ink/55">New property name</p>
                   ) : null}
                 </div>
                 {kind === "airbnb" ? (
@@ -414,7 +414,7 @@ export default function NewExpensePage() {
                 </div>
                 {sharePreview !== undefined ? (
                   <p className="text-xs text-ink/55">
-                    Daily share calculated: {formatCurrency(sharePreview)}. You can override the amount below.
+                    Daily share: {formatCurrency(sharePreview)}. Editable below.
                   </p>
                 ) : null}
               </div>
@@ -493,7 +493,7 @@ export default function NewExpensePage() {
             ) : null}
             {isLodging ? (
               <p className="text-xs text-ink/50">
-                Leave check-out blank if you are still staying. Check out later from Payroll. This stay appears on the Field Operations board.
+                Leave check-out blank if still staying.
               </p>
             ) : null}
 
@@ -511,7 +511,7 @@ export default function NewExpensePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="car-active">Show on Field Operations board</Label>
+                  <Label htmlFor="car-active">Active rental</Label>
                   <Select
                     id="car-active"
                     value={carActive ? "yes" : "no"}

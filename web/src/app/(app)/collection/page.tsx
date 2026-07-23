@@ -71,7 +71,7 @@ export default function CollectionPage() {
       <PageHeader
         eyebrow="Collection"
         title="Master Collection Table"
-        description="One issue at a time with live submission totals."
+        description="View submission totals by issue."
         actions={
           <div className="flex flex-wrap items-end gap-3">
             <div className="w-56 space-y-2">

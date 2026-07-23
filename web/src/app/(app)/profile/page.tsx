@@ -48,7 +48,7 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader eyebrow="Account" title="Profile" description="Your identity, tags, and account details." />
+      <PageHeader eyebrow="Account" title="Profile" description="Your account details." />
       {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
       <form onSubmit={(e) => void handleSave(e)} className="grid gap-6 lg:grid-cols-2">
         <Card>

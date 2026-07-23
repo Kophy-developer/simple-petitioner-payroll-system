@@ -150,7 +150,7 @@ export default function SubmissionsPage() {
       <PageHeader
         eyebrow="Collection"
         title="Signature Submission"
-        description="Log raw signatures and page counts against a turn-in (for example CO-07-04). When an admin creates or imports a turn-in, it appears here for petitioners."
+        description="Enter raw signatures and page counts."
       />
 
       {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}

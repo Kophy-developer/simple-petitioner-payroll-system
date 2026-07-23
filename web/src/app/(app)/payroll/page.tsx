@@ -131,9 +131,9 @@ function PayrollContent() {
         description={
           tab === "payments"
             ? canRunPayroll(user.role)
-              ? "Record disbursements any day. No period lock. Attach paystubs and the date funds hit the account."
-              : "Your payment history. When funds are scheduled, status shows Paid — on the way until that date."
-            : "Month-to-date pay, upfront, hold, and live balance from the database."
+              ? "Record payments and advances."
+              : "View your payment history."
+            : "View balance and expenses."
         }
         actions={
           <div className="flex flex-wrap items-end gap-3">
@@ -214,9 +214,7 @@ function PayrollContent() {
               <CardBody className="space-y-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Open stays</p>
-                  <p className="mt-1 text-sm text-ink/60">
-                    Checked in via Airbnb or hotel expense. Check out when you leave.
-                  </p>
+                  <p className="mt-1 text-sm text-ink/60">Check out when you leave.</p>
                 </div>
                 <DataTable>
                   <thead>
