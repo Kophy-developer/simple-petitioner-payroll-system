@@ -49,11 +49,11 @@ export function extractPayFromCode(code: string) {
 }
 
 export function normalizeTurnInNumber(raw: string, sheetName: string) {
-  const fromCell = raw.trim().toUpperCase();
+  const fromCell = raw.trim().toUpperCase().replace(/^BAP-/, "");
   if (fromCell) return fromCell;
-  const sheet = sheetName.trim().toUpperCase();
-  if (sheet.startsWith("BAP-")) return sheet;
-  if (/^[A-Z]{2}-\d+$/i.test(sheet)) return `BAP-${sheet}`;
+  const sheet = sheetName.trim().toUpperCase().replace(/^BAP-/, "");
+  if (/^[A-Z]{2}-\d{2}-\d{2}$/i.test(sheet)) return sheet;
+  if (/^[A-Z]{2}-\d+$/i.test(sheet)) return sheet;
   return sheet;
 }
 
@@ -153,7 +153,7 @@ export function parseTurnInReportWorkbook(buffer: ArrayBuffer | Buffer): TurnInR
     throw new Error("No turn-in issue sheets found. Expected sheets like CO-01 with ROAD / TAX / GAS columns.");
   }
 
-  const stateMatch = issues[0]?.turnInNumber.match(/^BAP-([A-Z]{2})-/i);
+  const stateMatch = issues[0]?.turnInNumber.match(/^([A-Z]{2})-/i);
   return {
     state: stateMatch?.[1]?.toUpperCase() ?? "CO",
     codeNames,

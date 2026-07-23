@@ -16,8 +16,9 @@ describe("turn-in report excel", () => {
   });
 
   it("normalizes turn-in numbers", () => {
-    assert.equal(normalizeTurnInNumber("BAP-CO-01", "CO-01"), "BAP-CO-01");
-    assert.equal(normalizeTurnInNumber("", "CO-09"), "BAP-CO-09");
+    assert.equal(normalizeTurnInNumber("BAP-CO-01", "CO-01"), "CO-01");
+    assert.equal(normalizeTurnInNumber("", "CO-09"), "CO-09");
+    assert.equal(normalizeTurnInNumber("CO-07-04", "CO-01"), "CO-07-04");
   });
 
   it("parses CO turn-in workbook sheets into issues and entries", () => {
@@ -32,8 +33,8 @@ describe("turn-in report excel", () => {
     const summary = summarizeTurnInReport(parsed);
     assert.equal(parsed.state, "CO");
     assert.ok(parsed.issues.length >= 18);
-    assert.ok(parsed.issues.some((i) => i.turnInNumber === "BAP-CO-01"));
-    const first = parsed.issues.find((i) => i.turnInNumber === "BAP-CO-01");
+    assert.ok(parsed.issues.some((i) => i.turnInNumber === "CO-01" || i.turnInNumber === "BAP-CO-01"));
+    const first = parsed.issues.find((i) => i.turnInNumber === "CO-01" || i.turnInNumber === "BAP-CO-01");
     assert.ok(first);
     assert.ok(first.columns.some((c) => c.code === "ROAD"));
     assert.ok(first.columns.some((c) => /TAX/i.test(c.code)));

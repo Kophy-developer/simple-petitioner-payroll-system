@@ -188,7 +188,7 @@ export default function IssuesPage() {
       <PageHeader
         eyebrow="Collection"
         title="Issues & Petitions"
-        description="Issue setup, pay models, and petition base rates from the database."
+        description="Legacy issue batches used by Signature Submission. Weekly team collections now live under Turn-ins (date numbers like CO-07-04). Petition naming across OnTarget and client reports is mapped on Turn-ins → Petition name map."
       />
 
       {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}

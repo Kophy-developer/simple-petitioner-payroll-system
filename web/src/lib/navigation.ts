@@ -19,7 +19,7 @@ const allRoles: UserRole[] = [
 
 export const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", roles: allRoles, section: "Overview" },
-  { href: "/turn-ins", label: "Turn-ins", roles: ["super_admin", "account_admin", "team_lead", "validator"], section: "Collection", matchPrefix: true },
+  { href: "/turn-ins", label: "Turn-ins", roles: ["super_admin", "account_admin", "team_lead", "petitioner", "validator"], section: "Collection", matchPrefix: true },
   { href: "/issues", label: "Issues & Petitions", roles: ["super_admin", "account_admin", "team_lead", "petitioner", "validator"], section: "Collection" },
   { href: "/submissions", label: "Submissions", roles: ["super_admin", "account_admin", "team_lead", "petitioner"], section: "Collection" },
   { href: "/collection", label: "Master Collection", roles: ["super_admin", "account_admin", "team_lead"], section: "Collection" },

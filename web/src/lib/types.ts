@@ -200,6 +200,10 @@ export type PricedPetitionLine = {
   code: string;
   pay: number;
   lotusPay: number;
+  officialNumber: string | null;
+  officialName: string | null;
+  ontargetName: string | null;
+  clientReportName: string | null;
 };
 
 export type TurnIn = {

@@ -40,7 +40,9 @@ export async function listPricedPetitionLines() {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("priced_petition_lines")
-    .select("id, petition_id, name, code, pay, lotus_pay")
+    .select(
+      "id, petition_id, name, code, pay, lotus_pay, official_number, official_name, ontarget_name, client_report_name",
+    )
     .order("code");
   if (error) throw error;
   return (data ?? []).map(
@@ -51,6 +53,10 @@ export async function listPricedPetitionLines() {
       code: row.code,
       pay: num(row.pay),
       lotusPay: num(row.lotus_pay),
+      officialNumber: row.official_number ?? null,
+      officialName: row.official_name ?? null,
+      ontargetName: row.ontarget_name ?? null,
+      clientReportName: row.client_report_name ?? null,
     }),
   );
 }
@@ -62,6 +68,10 @@ export async function savePricedPetitionLine(input: {
   pay: number;
   lotusPay: number;
   petitionId?: string | null;
+  officialNumber?: string | null;
+  officialName?: string | null;
+  ontargetName?: string | null;
+  clientReportName?: string | null;
 }) {
   const supabase = createClient();
   const payload = {
@@ -70,6 +80,10 @@ export async function savePricedPetitionLine(input: {
     pay: input.pay,
     lotus_pay: input.lotusPay,
     petition_id: input.petitionId ?? null,
+    official_number: input.officialNumber?.trim() || null,
+    official_name: input.officialName?.trim() || null,
+    ontarget_name: input.ontargetName?.trim() || null,
+    client_report_name: input.clientReportName?.trim() || null,
     updated_at: new Date().toISOString(),
   };
   if (input.id) {
@@ -107,14 +121,16 @@ export async function createTurnIn(input: {
   turnInDate?: string | null;
   benchmarkPct: number;
   pricedLineIds: string[];
+  exposeToSubmissions?: boolean;
 }) {
   const supabase = createClient();
+  const turnInNumber = input.turnInNumber.trim().toUpperCase();
   const { data, error } = await supabase
     .from("turn_ins")
     .insert({
-      turn_in_number: input.turnInNumber.trim(),
-      name: input.name.trim(),
-      state: input.state.trim(),
+      turn_in_number: turnInNumber,
+      name: (input.name.trim() || turnInNumber),
+      state: input.state.trim().toUpperCase(),
       turn_in_date: input.turnInDate || null,
       benchmark_pct: input.benchmarkPct,
     })
@@ -132,7 +148,116 @@ export async function createTurnIn(input: {
     );
     if (colErr) throw colErr;
   }
+
+  if (input.exposeToSubmissions !== false) {
+    await linkTurnInToSubmissionIssue({
+      turnInId: data.id as string,
+      turnInNumber,
+      name: input.name.trim() || turnInNumber,
+      state: input.state.trim().toUpperCase(),
+      turnInDate: input.turnInDate || null,
+      pricedLineIds: input.pricedLineIds,
+    });
+  }
+
   return data.id as string;
+}
+
+async function linkTurnInToSubmissionIssue(input: {
+  turnInId: string;
+  turnInNumber: string;
+  name: string;
+  state: string;
+  turnInDate: string | null;
+  pricedLineIds: string[];
+}) {
+  const supabase = createClient();
+  const { data: existingIssue } = await supabase
+    .from("issues")
+    .select("id")
+    .eq("issue_number", input.turnInNumber)
+    .maybeSingle();
+
+  let issueId = existingIssue?.id as string | undefined;
+
+  if (!issueId) {
+    let petitionId: string | null = null;
+    if (input.pricedLineIds[0]) {
+      const { data: line } = await supabase
+        .from("priced_petition_lines")
+        .select("petition_id")
+        .eq("id", input.pricedLineIds[0])
+        .maybeSingle();
+      petitionId = (line?.petition_id as string | null) ?? null;
+    }
+    if (!petitionId) {
+      const { data: petition } = await supabase
+        .from("petitions")
+        .select("id")
+        .order("code")
+        .limit(1)
+        .maybeSingle();
+      petitionId = (petition?.id as string | undefined) ?? null;
+    }
+    if (!petitionId) {
+      const { data: createdPetition, error: petitionError } = await supabase
+        .from("petitions")
+        .insert({
+          name: "General petition",
+          code: "GENERAL",
+          pay: 0,
+          lotus: "0",
+        })
+        .select("id")
+        .single();
+      if (petitionError) throw petitionError;
+      petitionId = createdPetition.id as string;
+    }
+
+    const { data: issue, error: issueError } = await supabase
+      .from("issues")
+      .insert({
+        issue_number: input.turnInNumber,
+        name: input.name,
+        petition_id: petitionId,
+        state: input.state,
+        turn_in_date: input.turnInDate,
+        turn_in_number: input.turnInNumber,
+        pay_model: "validity_standard",
+      })
+      .select("id")
+      .single();
+    if (issueError) throw issueError;
+    issueId = issue.id as string;
+  }
+
+  await supabase
+    .from("turn_ins")
+    .update({ legacy_issue_id: issueId, updated_at: new Date().toISOString() })
+    .eq("id", input.turnInId);
+}
+
+export async function exposeAllTurnInsToSubmissions() {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("turn_ins")
+    .select("id, turn_in_number, name, state, turn_in_date, legacy_issue_id");
+  if (error) throw error;
+
+  let linked = 0;
+  for (const row of data ?? []) {
+    const columns = await listTurnInColumns(row.id as string);
+    await linkTurnInToSubmissionIssue({
+      turnInId: row.id as string,
+      turnInNumber: String(row.turn_in_number),
+      name: String(row.name || row.turn_in_number),
+      state: String(row.state || ""),
+      turnInDate: (row.turn_in_date as string | null) ?? null,
+      pricedLineIds: columns.map((c) => c.pricedLineId),
+    });
+    linked += 1;
+  }
+  return { linked };
 }
 
 export async function listTurnInColumns(turnInId: string) {
@@ -633,20 +758,33 @@ export async function importTurnInReport(input: {
   parsed: import("@/lib/turn-in-report-excel").TurnInReportParseResult;
   benchmarkPct?: number;
   profiles: { id: string; initials: string; firstName: string; lastName: string }[];
+  overrides?: Record<
+    string,
+    {
+      turnInNumber?: string;
+      turnInDate?: string | null;
+    }
+  >;
 }) {
   const benchmarkPct = input.benchmarkPct ?? 75;
   let lines = await listPricedPetitionLines();
   const lineByCode = new Map(lines.map((l) => [l.code.toUpperCase(), l]));
 
-  const neededCodes = new Map<string, { code: string; pay: number; name: string }>();
+  const neededCodes = new Map<
+    string,
+    { code: string; pay: number; name: string; officialName: string | null }
+  >();
   for (const issue of input.parsed.issues) {
     for (const col of issue.columns) {
       const key = col.code.toUpperCase();
       if (!neededCodes.has(key)) {
+        const official =
+          col.legalName || input.parsed.codeNames[key] || input.parsed.codeNames[key.replace(/\s*\$\s*\d+(?:\.\d+)?$/, "").trim()] || null;
         neededCodes.set(key, {
           code: col.code,
           pay: col.pay,
-          name: col.legalName || input.parsed.codeNames[key] || col.code,
+          name: official || col.code,
+          officialName: official,
         });
       }
     }
@@ -659,6 +797,7 @@ export async function importTurnInReport(input: {
       code: needed.code,
       pay: needed.pay,
       lotusPay: needed.pay,
+      officialName: needed.officialName,
     });
   }
 
@@ -674,30 +813,42 @@ export async function importTurnInReport(input: {
   const unmatchedSet = new Set<string>();
 
   for (const issue of input.parsed.issues) {
+    const override = input.overrides?.[issue.sheetName] ?? input.overrides?.[issue.turnInNumber];
+    const turnInNumber = (override?.turnInNumber || issue.turnInNumber).trim().toUpperCase();
+    const turnInDate = override?.turnInDate || null;
     const pricedIds = issue.columns
       .map((c) => lineByCode.get(c.code.toUpperCase())?.id)
       .filter((id): id is string => !!id);
 
-    let turnIn = turnInByNumber.get(issue.turnInNumber.toUpperCase());
+    let turnIn = turnInByNumber.get(turnInNumber);
     if (!turnIn) {
       const id = await createTurnIn({
-        turnInNumber: issue.turnInNumber,
-        name: issue.turnInNumber,
+        turnInNumber,
+        name: turnInNumber,
         state: input.parsed.state,
-        turnInDate: null,
+        turnInDate,
         benchmarkPct,
         pricedLineIds: pricedIds,
       });
       createdTurnIns += 1;
       turnIn = {
         id,
-        turnInNumber: issue.turnInNumber,
-        name: issue.turnInNumber,
+        turnInNumber,
+        name: turnInNumber,
         state: input.parsed.state,
-        turnInDate: null,
+        turnInDate,
         benchmarkPct,
       };
-      turnInByNumber.set(issue.turnInNumber.toUpperCase(), turnIn);
+      turnInByNumber.set(turnInNumber, turnIn);
+    } else {
+      await linkTurnInToSubmissionIssue({
+        turnInId: turnIn.id,
+        turnInNumber,
+        name: turnIn.name || turnInNumber,
+        state: turnIn.state || input.parsed.state,
+        turnInDate: turnInDate || turnIn.turnInDate,
+        pricedLineIds: pricedIds,
+      });
     }
 
     const columns = await ensureTurnInColumns(turnIn.id, pricedIds);
