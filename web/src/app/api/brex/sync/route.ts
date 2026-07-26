@@ -12,6 +12,11 @@ type BrexTxn = {
   card_id?: string;
 };
 
+type BrexPage = {
+  items?: BrexTxn[];
+  next_cursor?: string | null;
+};
+
 async function requireAdmin() {
   const supabase = await createServerClient();
   const {
@@ -45,6 +50,52 @@ function matchName(
   return null;
 }
 
+async function fetchAllCardTransactions(token: string): Promise<{
+  items: BrexTxn[];
+  error?: string;
+}> {
+  const bases = [
+    "https://api.brex.com/v2/transactions/card/primary",
+    "https://platform.brexapis.com/v2/transactions/card/primary",
+  ];
+
+  let lastError = "";
+
+  for (const base of bases) {
+    const items: BrexTxn[] = [];
+    let cursor: string | null = null;
+    let pageOk = true;
+
+    while (true) {
+      const params = new URLSearchParams({ limit: "100" });
+      if (cursor) params.set("cursor", cursor);
+      const res = await fetch(`${base}?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        lastError = `Brex API error ${res.status}: ${text.slice(0, 300)}`;
+        pageOk = false;
+        break;
+      }
+
+      const payload = (await res.json()) as BrexPage;
+      const batch = payload.items ?? [];
+      items.push(...batch);
+      cursor = payload.next_cursor ?? null;
+      if (!cursor || batch.length === 0) break;
+    }
+
+    if (pageOk) return { items };
+  }
+
+  return { items: [], error: lastError || "Brex API request failed" };
+}
+
 export async function POST() {
   const gate = await requireAdmin();
   if (gate.error) return gate.error;
@@ -63,23 +114,10 @@ export async function POST() {
     return NextResponse.json({ error: "Supabase is not configured." }, { status: 500 });
   }
 
-  const res = await fetch("https://platform.brexapis.com/v2/transactions/card/primary", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    return NextResponse.json(
-      { error: `Brex API error ${res.status}: ${text.slice(0, 300)}` },
-      { status: 502 },
-    );
+  const { items, error: fetchError } = await fetchAllCardTransactions(token);
+  if (fetchError) {
+    return NextResponse.json({ error: fetchError }, { status: 502 });
   }
-
-  const payload = (await res.json()) as { items?: BrexTxn[] };
-  const items = payload.items ?? [];
 
   const admin = createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -90,6 +128,8 @@ export async function POST() {
     .select("id, first_name, last_name");
 
   let upserted = 0;
+  const upsertErrors: { brex_id: string; message: string }[] = [];
+
   for (const txn of items) {
     const amountRaw = txn.amount?.amount;
     const amount =
@@ -115,13 +155,19 @@ export async function POST() {
       },
       { onConflict: "brex_id" },
     );
-    if (!error) upserted += 1;
+    if (!error) {
+      upserted += 1;
+    } else {
+      upsertErrors.push({ brex_id: txn.id, message: error.message });
+    }
   }
 
   return NextResponse.json({
-    ok: true,
+    ok: upsertErrors.length === 0,
     fetched: items.length,
     upserted,
+    failed: upsertErrors.length,
+    upsert_errors: upsertErrors.slice(0, 25),
   });
 }
 
