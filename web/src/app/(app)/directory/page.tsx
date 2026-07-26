@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
@@ -23,7 +23,9 @@ import {
 } from "@/lib/api/live";
 import {
   downloadCredentialsWorkbook,
+  downloadRosterTemplate,
   parseRosterWorkbook,
+  sortDirectoryUsers,
   type CredentialExportRow,
 } from "@/lib/roster-import";
 import type { DemoUser, UserRole, WageCurrency } from "@/lib/types";
@@ -44,7 +46,7 @@ export default function DirectoryPage() {
   const [password, setPassword] = useState("demo1234");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [initials, setInitials] = useState("");
+  const [phone, setPhone] = useState("");
   const [role, setRole] = useState<UserRole>("petitioner");
   const [hourlyWage, setHourlyWage] = useState("");
   const [currency, setCurrency] = useState<WageCurrency>("USD");
@@ -56,12 +58,16 @@ export default function DirectoryPage() {
   const [savingTeam, setSavingTeam] = useState(false);
   const [teamMessage, setTeamMessage] = useState("");
   const [rosterPreview, setRosterPreview] = useState<
-    { firstName: string; lastName: string; initials: string; role?: string }[]
+    { firstName: string; lastName: string; email: string; role?: string; phone?: string }[]
   >([]);
   const [rosterFileName, setRosterFileName] = useState("");
   const [importingRoster, setImportingRoster] = useState(false);
   const [credentials, setCredentials] = useState<CredentialExportRow[]>([]);
   const [rosterMessage, setRosterMessage] = useState("");
+  const [sendingInvites, setSendingInvites] = useState(false);
+
+  const sortedUsers = useMemo(() => sortDirectoryUsers(users), [users]);
+  const pendingInvites = users.filter((u) => !u.inviteSentAt && u.status !== "offboarded").length;
 
   const leads = users.filter((u) => u.role === "team_lead");
   const fieldWorkers = users.filter((u) =>
@@ -133,7 +139,7 @@ export default function DirectoryPage() {
           password,
           firstName,
           lastName,
-          initials,
+          phone: phone || undefined,
           role,
           hourlyWage: hourlyWage === "" ? null : parseFloat(hourlyWage),
           wageCurrency: currency,
@@ -146,11 +152,11 @@ export default function DirectoryPage() {
       setPassword("demo1234");
       setFirstName("");
       setLastName("");
-      setInitials("");
+      setPhone("");
       setRole("petitioner");
       setHourlyWage("");
       setCurrency("USD");
-      setMessage("User created.");
+      setMessage("User created (invite held until Send all invites).");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create user.");
@@ -186,7 +192,8 @@ export default function DirectoryPage() {
           rows: rosterPreview.map((row) => ({
             firstName: row.firstName,
             lastName: row.lastName,
-            initials: row.initials,
+            email: row.email,
+            phone: row.phone,
             role: (row.role as UserRole | undefined) || "petitioner",
           })),
         }),
@@ -202,7 +209,7 @@ export default function DirectoryPage() {
       setRosterMessage(
         `Created ${created.length} account(s)${
           payload.errors?.length ? ` · ${payload.errors.length} row error(s)` : ""
-        }. Download the credentials sheet before leaving this page.`,
+        }. Invites are held until you click Send all invites.`,
       );
       if (payload.errors?.length) {
         setError(payload.errors.map((e) => `Row ${e.row}: ${e.message}`).join(" · "));
@@ -216,6 +223,27 @@ export default function DirectoryPage() {
     }
   }
 
+  async function sendAllInvites() {
+    setSendingInvites(true);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch("/api/admin/invites", { method: "POST" });
+      const payload = (await res.json()) as {
+        error?: string;
+        sent?: number;
+        note?: string;
+      };
+      if (!res.ok) throw new Error(payload.error || "Could not send invites.");
+      setMessage(`Activated ${payload.sent ?? 0} account(s). ${payload.note ?? ""}`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not send invites.");
+    } finally {
+      setSendingInvites(false);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -224,7 +252,16 @@ export default function DirectoryPage() {
         description="Manage employees, import, and teams."
         actions={
           canCreate ? (
-            <Button onClick={() => setOpen(true)}>Create user</Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="ghost"
+                disabled={sendingInvites || pendingInvites === 0}
+                onClick={() => void sendAllInvites()}
+              >
+                {sendingInvites ? "Sending…" : `Send all invites (${pendingInvites})`}
+              </Button>
+              <Button onClick={() => setOpen(true)}>Create user</Button>
+            </div>
           ) : undefined
         }
       />
@@ -239,23 +276,27 @@ export default function DirectoryPage() {
               <tr>
                 <Th>Name</Th>
                 <Th>Employee ID</Th>
-                <Th>Initials</Th>
                 <Th>Email</Th>
                 <Th>Role</Th>
                 <Th>Status</Th>
+                <Th>Invite</Th>
                 <Th>Wage</Th>
                 <Th>Ledger</Th>
                 {canManagePeople ? <Th /> : null}
               </tr>
             </thead>
             <tbody className="divide-y divide-ink/8 bg-white/50">
-              {users.map((u) => (
+              {sortedUsers.map((u) => (
                 <tr key={u.id}>
                   <Td>
                     {u.firstName} {u.lastName}
+                    {u.isLotus ? (
+                      <Badge tone="navy" className="ml-2">
+                        Lotus
+                      </Badge>
+                    ) : null}
                   </Td>
-                  <Td>{u.employeeId ?? "—"}</Td>
-                  <Td>{u.initials}</Td>
+                  <Td className="font-mono">{u.employeeId ?? "—"}</Td>
                   <Td>{u.email}</Td>
                   <Td>
                     <Badge tone="navy">{roleLabel(u.role)}</Badge>
@@ -272,6 +313,13 @@ export default function DirectoryPage() {
                     >
                       {u.status}
                     </Badge>
+                  </Td>
+                  <Td>
+                    {u.inviteSentAt ? (
+                      <Badge tone="success">Sent</Badge>
+                    ) : (
+                      <Badge tone="warning">Held</Badge>
+                    )}
                   </Td>
                   <Td>{u.hourlyWage ? formatCurrency(u.hourlyWage) : "—"}</Td>
                   <Td>
@@ -305,11 +353,16 @@ export default function DirectoryPage() {
             <CardBody className="space-y-5">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Import employees</p>
-                <h3 className="font-display text-xl text-ink">Upload names &amp; initials</h3>
+                <h3 className="font-display text-xl text-ink">Upload roster</h3>
                 <p className="mt-1 text-sm text-ink/55">
-                  Upload an Excel with First Name, Last Name, Initials. The system assigns 5-digit
-                  employee IDs and temporary passwords, then you download a credentials sheet.
+                  Columns: First, Last, Email, Role, Phone (optional). Accounts stay disabled until
+                  invites are sent.
                 </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button variant="ghost" onClick={() => downloadRosterTemplate()}>
+                  Download template
+                </Button>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="roster-file">Employee workbook</Label>
@@ -446,8 +499,8 @@ export default function DirectoryPage() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Initials</Label>
-              <Input required maxLength={3} value={initials} onChange={(e) => setInitials(e.target.value)} />
+              <Label>Phone (optional)</Label>
+              <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Role</Label>

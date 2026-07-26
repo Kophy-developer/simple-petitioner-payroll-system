@@ -51,6 +51,8 @@ function mapProfile(row: {
   sub_account_id?: string | null;
   must_change_password?: boolean | null;
   onboarding_complete?: boolean | null;
+  invite_sent_at?: string | null;
+  is_lotus?: boolean | null;
 }): DemoUser {
   return {
     id: row.id,
@@ -70,6 +72,8 @@ function mapProfile(row: {
     subAccountId: row.sub_account_id,
     mustChangePassword: !!row.must_change_password,
     onboardingComplete: row.onboarding_complete !== false,
+    inviteSentAt: row.invite_sent_at ?? null,
+    isLotus: !!row.is_lotus,
   };
 }
 
@@ -197,7 +201,7 @@ export async function listProfiles() {
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags, employee_id, phone, sub_account_id, must_change_password, onboarding_complete",
+      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags, employee_id, phone, sub_account_id, must_change_password, onboarding_complete, invite_sent_at, is_lotus",
     )
     .order("last_name");
   if (error) throw error;
@@ -230,7 +234,7 @@ export async function getProfile(userId: string) {
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags, employee_id, phone, sub_account_id, must_change_password, onboarding_complete",
+      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags, employee_id, phone, sub_account_id, must_change_password, onboarding_complete, invite_sent_at, is_lotus",
     )
     .eq("id", userId)
     .maybeSingle();

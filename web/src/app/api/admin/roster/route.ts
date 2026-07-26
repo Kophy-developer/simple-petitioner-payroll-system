@@ -2,13 +2,16 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { deriveInitials, normalizeRoleLabel } from "@/lib/roster-import";
 import type { UserRole } from "@/lib/types";
 
 type RosterRow = {
   firstName: string;
   lastName: string;
-  initials: string;
-  role?: UserRole;
+  email: string;
+  phone?: string;
+  initials?: string;
+  role?: UserRole | string;
 };
 
 function tempPassword() {
@@ -17,13 +20,6 @@ function tempPassword() {
   let out = "";
   for (let i = 0; i < 10; i += 1) out += alphabet[bytes[i] % alphabet.length];
   return out;
-}
-
-function provisionalEmail(employeeId: string) {
-  const from = process.env.EMAIL_FROM?.trim();
-  const domain = from?.includes("@") ? from.split("@")[1] : null;
-  if (domain) return `employee.${employeeId}@${domain}`;
-  return `employee.${employeeId}@ballotaccesspros.com`;
 }
 
 function formatErr(err: unknown): string {
@@ -86,10 +82,10 @@ export async function POST(request: Request) {
     employeeId: string;
     firstName: string;
     lastName: string;
-    initials: string;
-    role: UserRole;
-    tempPassword: string;
     email: string;
+    role: UserRole;
+    phone?: string;
+    tempPassword: string;
   }[] = [];
   const errors: { row: number; message: string }[] = [];
 
@@ -97,48 +93,50 @@ export async function POST(request: Request) {
     const row = rows[i];
     const firstName = row.firstName?.trim() ?? "";
     const lastName = row.lastName?.trim() ?? "";
-    let initials = (row.initials?.trim() ?? "").toUpperCase();
-    const roleRaw = (row.role ?? "petitioner").toLowerCase();
-    const allowed: UserRole[] = [
-      "super_admin",
-      "account_admin",
-      "team_lead",
-      "petitioner",
-      "validator",
-    ];
-    const role: UserRole = allowed.includes(roleRaw as UserRole)
-      ? (roleRaw as UserRole)
-      : "petitioner";
+    const email = (row.email?.trim() ?? "").toLowerCase();
+    const phone = row.phone?.trim() || null;
+    let initials = (row.initials?.trim() || deriveInitials(firstName, lastName)).toUpperCase();
+    const role = normalizeRoleLabel(String(row.role ?? "petitioner")) ?? "petitioner";
 
-    if (!firstName || !lastName || !initials) {
+    if (!firstName || !lastName || !email || !email.includes("@")) {
       errors.push({
         row: i + 1,
-        message: `First name, last name, and initials are required (got "${firstName}" / "${lastName}" / "${initials}"). Check Excel headers: First Name, Last Name, Initials.`,
+        message: `First name, last name, and email are required (got "${firstName}" / "${lastName}" / "${email}").`,
       });
       continue;
     }
 
-    const { data: employeeIdRaw, error: idErr } = await admin.rpc("next_employee_id");
-    if (idErr || employeeIdRaw == null || employeeIdRaw === "") {
+    let employeeId = "";
+    try {
+      const { data: allocated, error: allocErr } = await admin.rpc("allocate_employee_id", {
+        p_first_name: firstName,
+        p_last_name: lastName,
+      });
+      if (!allocErr && allocated) {
+        employeeId = String(allocated);
+      } else {
+        const { data: nextId, error: nextErr } = await admin.rpc("next_employee_id");
+        if (nextErr || nextId == null) throw nextErr ?? new Error("Could not allocate employee ID");
+        employeeId = String(nextId);
+      }
+    } catch (e) {
       errors.push({
         row: i + 1,
-        message: `Could not allocate employee ID: ${formatErr(idErr)}`,
+        message: `Could not allocate employee ID: ${formatErr(e)}`,
       });
       continue;
     }
-    const employeeId = String(employeeIdRaw);
 
     const { data: taken } = await admin
       .from("profiles")
-      .select("id, first_name, last_name")
+      .select("id")
       .eq("initials", initials)
       .maybeSingle();
     if (taken) {
-      initials = `${initials}${employeeId.slice(-2)}`.slice(0, 8);
+      initials = `${initials}${employeeId.replace(/\D/g, "").slice(-2)}`.slice(0, 8);
     }
 
     const password = tempPassword();
-    const email = provisionalEmail(employeeId);
 
     const { data, error } = await admin.auth.admin.createUser({
       email,
@@ -169,10 +167,12 @@ export async function POST(request: Request) {
         initials,
         role,
         email,
+        phone,
         employee_id: employeeId,
-        status: "active",
+        status: "inactive",
         must_change_password: true,
         onboarding_complete: false,
+        invite_sent_at: null,
       })
       .eq("id", data.user.id);
 
@@ -184,14 +184,18 @@ export async function POST(request: Request) {
       continue;
     }
 
+    await admin.auth.admin.updateUserById(data.user.id, {
+      ban_duration: "876000h",
+    });
+
     created.push({
       employeeId,
       firstName,
       lastName,
-      initials,
-      role,
-      tempPassword: password,
       email,
+      role,
+      phone: phone ?? undefined,
+      tempPassword: password,
     });
   }
 

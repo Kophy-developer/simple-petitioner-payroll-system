@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { deriveInitials } from "@/lib/roster-import";
 import type { UserRole, WageCurrency } from "@/lib/types";
 
 type Body = {
@@ -8,11 +10,20 @@ type Body = {
   password: string;
   firstName: string;
   lastName: string;
-  initials: string;
+  initials?: string;
+  phone?: string;
   role: UserRole;
   hourlyWage?: number | null;
   wageCurrency?: WageCurrency | null;
 };
+
+function tempPassword() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  const bytes = randomBytes(10);
+  let out = "";
+  for (let i = 0; i < 10; i += 1) out += alphabet[bytes[i] % alphabet.length];
+  return out;
+}
 
 export async function POST(request: Request) {
   const supabase = await createServerClient();
@@ -29,7 +40,7 @@ export async function POST(request: Request) {
     .eq("id", user.id)
     .maybeSingle();
 
-  if (profile?.role !== "super_admin") {
+  if (profile?.role !== "super_admin" && profile?.role !== "account_admin") {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
 
@@ -43,28 +54,33 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json()) as Body;
-  if (!body.email?.trim() || !body.password || body.password.length < 8) {
+  const password = body.password?.trim() || tempPassword();
+  if (!body.email?.trim() || password.length < 8) {
     return NextResponse.json(
       { error: "Email and a password of at least 8 characters are required." },
       { status: 400 },
     );
   }
-  if (!body.firstName?.trim() || !body.lastName?.trim() || !body.initials?.trim()) {
-    return NextResponse.json({ error: "Name and initials are required." }, { status: 400 });
+  if (!body.firstName?.trim() || !body.lastName?.trim()) {
+    return NextResponse.json({ error: "First and last name are required." }, { status: 400 });
   }
 
   const admin = createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
+  const initials = (
+    body.initials?.trim() || deriveInitials(body.firstName, body.lastName)
+  ).toUpperCase();
+
   const { data, error } = await admin.auth.admin.createUser({
     email: body.email.trim().toLowerCase(),
-    password: body.password,
+    password,
     email_confirm: true,
     user_metadata: {
       first_name: body.firstName.trim(),
       last_name: body.lastName.trim(),
-      initials: body.initials.trim().toUpperCase(),
+      initials,
       role: body.role,
       wage_currency: body.wageCurrency ?? null,
       hourly_wage: body.hourlyWage ?? null,
@@ -81,8 +97,17 @@ export async function POST(request: Request) {
   }
 
   let employeeId: string | null = null;
-  const { data: nextId } = await admin.rpc("next_employee_id");
-  if (nextId) employeeId = String(nextId);
+  {
+    const { data: allocated } = await admin.rpc("allocate_employee_id", {
+      p_first_name: body.firstName.trim(),
+      p_last_name: body.lastName.trim(),
+    });
+    if (allocated) employeeId = String(allocated);
+    else {
+      const { data: nextId } = await admin.rpc("next_employee_id");
+      if (nextId) employeeId = String(nextId);
+    }
+  }
 
   if (data.user) {
     await admin
@@ -90,16 +115,22 @@ export async function POST(request: Request) {
       .update({
         first_name: body.firstName.trim(),
         last_name: body.lastName.trim(),
-        initials: body.initials.trim().toUpperCase(),
+        initials,
         role: body.role,
+        phone: body.phone?.trim() || null,
         wage_currency: body.wageCurrency ?? null,
         hourly_wage: body.hourlyWage ?? null,
-        status: "active",
+        status: "inactive",
         employee_id: employeeId,
         must_change_password: true,
-        onboarding_complete: true,
+        onboarding_complete: false,
+        invite_sent_at: null,
       })
       .eq("id", data.user.id);
+
+    await admin.auth.admin.updateUserById(data.user.id, {
+      ban_duration: "876000h",
+    });
   }
 
   return NextResponse.json({

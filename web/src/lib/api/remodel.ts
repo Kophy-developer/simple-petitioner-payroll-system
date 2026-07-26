@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import type {
+  BrexTransaction,
+  HousingShareKind,
   LedgerLine,
   LodgingKind,
   LodgingOccupancy,
@@ -8,6 +10,7 @@ import type {
   PaymentEvent,
   PaymentEventType,
   PricedPetitionLine,
+  RentalCarAssignment,
   SubAccount,
   TurnIn,
   TurnInColumn,
@@ -506,6 +509,8 @@ function mapLodgingProperty(row: {
   daily_total: number | string | null;
   room_count: number | null;
   room_rate: number | string | null;
+  full_rate?: number | string | null;
+  half_rate?: number | string | null;
 }): LodgingProperty {
   return {
     id: row.id,
@@ -515,6 +520,8 @@ function mapLodgingProperty(row: {
     dailyTotal: row.daily_total == null ? null : num(row.daily_total),
     roomCount: row.room_count,
     roomRate: row.room_rate == null ? null : num(row.room_rate),
+    fullRate: row.full_rate == null ? null : num(row.full_rate),
+    halfRate: row.half_rate == null ? null : num(row.half_rate),
   };
 }
 
@@ -529,6 +536,9 @@ function mapLodgingOccupancy(row: {
   check_out_date: string | null;
   check_out_backdated: boolean;
   daily_amount: number | string | null;
+  share_kind?: string | null;
+  checkout_requested_at?: string | null;
+  checkout_approved_at?: string | null;
 }): LodgingOccupancy {
   return {
     id: row.id,
@@ -541,6 +551,9 @@ function mapLodgingOccupancy(row: {
     checkOutDate: row.check_out_date,
     checkOutBackdated: !!row.check_out_backdated,
     dailyAmount: row.daily_amount == null ? null : num(row.daily_amount),
+    shareKind: (row.share_kind as LodgingOccupancy["shareKind"]) ?? "full",
+    checkoutRequestedAt: row.checkout_requested_at ?? null,
+    checkoutApprovedAt: row.checkout_approved_at ?? null,
   };
 }
 
@@ -548,7 +561,7 @@ export async function listLodgingProperties(kind?: LodgingKind) {
   const supabase = createClient();
   let query = supabase
     .from("lodging_properties")
-    .select("id, kind, name, address, daily_total, room_count, room_rate")
+    .select("id, kind, name, address, daily_total, room_count, room_rate, full_rate, half_rate")
     .order("name");
   if (kind) query = query.eq("kind", kind);
   const { data, error } = await query;
@@ -591,7 +604,7 @@ export async function listOpenLodgingOccupancies(userId?: string) {
   let query = supabase
     .from("lodging_occupancies")
     .select(
-      "id, property_id, user_id, room_number, occupants_in_room, check_in_at, check_out_at, check_out_date, check_out_backdated, daily_amount",
+      "id, property_id, user_id, room_number, occupants_in_room, check_in_at, check_out_at, check_out_date, check_out_backdated, daily_amount, share_kind, checkout_requested_at, checkout_approved_at",
     )
     .is("check_out_at", null)
     .is("check_out_date", null)
@@ -913,4 +926,162 @@ export async function importTurnInValidityRows(input: {
     matched += 1;
   }
   return matched;
+}
+
+export async function bulkAssignHousing(input: {
+  propertyId: string;
+  checkIn: string;
+  fullRate: number;
+  halfRate: number;
+  assignments: { userId: string; shareKind: HousingShareKind; roomNumber?: string }[];
+}) {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("bulk_assign_housing", {
+    p_property_id: input.propertyId,
+    p_check_in: input.checkIn,
+    p_full_rate: input.fullRate,
+    p_half_rate: input.halfRate,
+    p_assignments: input.assignments.map((a) => ({
+      user_id: a.userId,
+      share_kind: a.shareKind,
+      room_number: a.roomNumber ?? "",
+    })),
+  });
+  if (error) throw error;
+  return Number(data ?? 0);
+}
+
+export async function requestHousingCheckout(occupancyId: string) {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("request_housing_checkout", {
+    p_occupancy_id: occupancyId,
+  });
+  if (error) throw error;
+}
+
+export async function approveHousingCheckout(occupancyId: string, checkoutDate?: string) {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("approve_housing_checkout", {
+    p_occupancy_id: occupancyId,
+    p_checkout_date: checkoutDate ?? new Date().toISOString().slice(0, 10),
+  });
+  if (error) throw error;
+}
+
+export async function updateHousingRates(propertyId: string, fullRate: number, halfRate: number) {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("update_housing_rates", {
+    p_property_id: propertyId,
+    p_full_rate: fullRate,
+    p_half_rate: halfRate,
+  });
+  if (error) throw error;
+}
+
+export async function listRentalCarAssignments(activeOnly = true) {
+  const supabase = createClient();
+  let query = supabase
+    .from("rental_car_assignments")
+    .select(
+      "id, user_id, pickup_at, return_at, agreement_number, pickup_location, dropoff_location, one_way_fee, monthly_accrual_amount, active, last_accrued_on, trued_up_at",
+    )
+    .order("pickup_at", { ascending: false });
+  if (activeOnly) query = query.eq("active", true);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []).map(
+    (row): RentalCarAssignment => ({
+      id: row.id,
+      userId: row.user_id,
+      pickupAt: row.pickup_at,
+      returnAt: row.return_at,
+      agreementNumber: row.agreement_number,
+      pickupLocation: row.pickup_location,
+      dropoffLocation: row.dropoff_location,
+      oneWayFee: num(row.one_way_fee),
+      monthlyAccrualAmount: num(row.monthly_accrual_amount),
+      active: !!row.active,
+      lastAccruedOn: row.last_accrued_on,
+      truedUpAt: row.trued_up_at,
+    }),
+  );
+}
+
+export async function assignRentalCar(input: {
+  userId: string;
+  pickupAt: string;
+  returnAt?: string | null;
+  agreementNumber?: string;
+  pickupLocation?: string;
+  dropoffLocation?: string;
+  oneWayFee?: number;
+}) {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("assign_rental_car", {
+    p_user_id: input.userId,
+    p_pickup_at: input.pickupAt,
+    p_return_at: input.returnAt ?? null,
+    p_agreement_number: input.agreementNumber ?? null,
+    p_pickup_location: input.pickupLocation ?? null,
+    p_dropoff_location: input.dropoffLocation ?? null,
+    p_one_way_fee: input.oneWayFee ?? 0,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function returnRentalCar(assignmentId: string, returnAt?: string, oneWayFee?: number) {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("return_rental_car", {
+    p_assignment_id: assignmentId,
+    p_return_at: returnAt ?? new Date().toISOString().slice(0, 10),
+    p_one_way_fee: oneWayFee ?? null,
+  });
+  if (error) throw error;
+}
+
+export async function listBrexTransactions() {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("brex_transactions")
+    .select(
+      "id, brex_id, cardholder_name, amount, occurred_at, merchant_name, description, matched_user_id, reimbursement_requested, reimbursement_status",
+    )
+    .order("occurred_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(
+    (row): BrexTransaction => ({
+      id: row.id,
+      brexId: row.brex_id,
+      cardholderName: row.cardholder_name,
+      amount: num(row.amount),
+      occurredAt: row.occurred_at,
+      merchantName: row.merchant_name,
+      description: row.description,
+      matchedUserId: row.matched_user_id,
+      reimbursementRequested: !!row.reimbursement_requested,
+      reimbursementStatus: row.reimbursement_status as BrexTransaction["reimbursementStatus"],
+    }),
+  );
+}
+
+export async function markBrexForReimbursement(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("mark_brex_for_reimbursement", { p_brex_id: id });
+  if (error) throw error;
+}
+
+export async function reviewBrexReimbursement(id: string, approve: boolean) {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("review_brex_reimbursement", {
+    p_brex_id: id,
+    p_approve: approve,
+  });
+  if (error) throw error;
+}
+
+export async function setUserLotus(userId: string, isLotus: boolean) {
+  const supabase = createClient();
+  const { error } = await supabase.from("profiles").update({ is_lotus: isLotus }).eq("id", userId);
+  if (error) throw error;
 }

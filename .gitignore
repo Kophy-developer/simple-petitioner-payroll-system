@@ -30,5 +30,5 @@ supabase/.temp
 # Vercel
 .vercel
 
-# TypeScript
-*.tsbuildinfo
+data/colorado-validity-drop/*
+!data/colorado-validity-drop/README.txt

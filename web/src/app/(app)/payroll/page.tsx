@@ -8,11 +8,13 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { StatCard } from "@/components/ui/stat-card";
 import { Card, CardBody } from "@/components/ui/card";
 import { DataTable, Td, Th } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { PaymentsPanel } from "@/components/payroll/payments-panel";
+import { PayrollBatchPanel } from "@/components/payroll/payroll-batch-panel";
 import { expenseTypeLabels } from "@/lib/demo-data";
 import { useDemoSession } from "@/lib/demo-session";
 import { canRunPayroll, isFieldRole } from "@/lib/access";
@@ -26,9 +28,10 @@ import {
   type PayrollBalance,
 } from "@/lib/api/live";
 import {
-  checkOutLodging,
   listLodgingProperties,
   listOpenLodgingOccupancies,
+  requestHousingCheckout,
+  updateHousingRates,
 } from "@/lib/api/remodel";
 import type { DemoUser, Expense, LodgingOccupancy, LodgingProperty } from "@/lib/types";
 
@@ -40,7 +43,7 @@ const emptyBalance: PayrollBalance = {
   liveBalance: 0,
 };
 
-type PayrollTab = "expenses" | "payments";
+type PayrollTab = "expenses" | "payments" | "batch";
 
 function PayrollContent() {
   const { user } = useDemoSession();
@@ -55,14 +58,20 @@ function PayrollContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
+  const [rateDraft, setRateDraft] = useState<Record<string, { full: string; half: string }>>({});
 
   const lockedToSelf = user ? isFieldRole(user.role) : false;
   const showPayments = user ? canAccessPayments(user.role) : false;
+  const showBatch = user ? canRunPayroll(user.role) : false;
   const tab: PayrollTab =
-    showPayments && params.get("tab") === "payments" ? "payments" : "expenses";
+    showBatch && params.get("tab") === "batch"
+      ? "batch"
+      : showPayments && params.get("tab") === "payments"
+        ? "payments"
+        : "expenses";
 
   const load = useCallback(async () => {
-    if (!user || tab === "payments") return;
+    if (!user || tab === "payments" || tab === "batch") return;
     setLoading(true);
     setError("");
     try {
@@ -85,6 +94,14 @@ function PayrollContent() {
       setExpenses(rows);
       setOpenStays(stays);
       setProperties(props);
+      const drafts: Record<string, { full: string; half: string }> = {};
+      for (const p of props) {
+        drafts[p.id] = {
+          full: String(p.fullRate ?? p.roomRate ?? ""),
+          half: String(p.halfRate ?? ""),
+        };
+      }
+      setRateDraft(drafts);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load payroll.");
     } finally {
@@ -101,19 +118,20 @@ function PayrollContent() {
   function setTab(next: PayrollTab) {
     const nextParams = new URLSearchParams(params.toString());
     if (next === "payments") nextParams.set("tab", "payments");
+    else if (next === "batch") nextParams.set("tab", "batch");
     else nextParams.delete("tab");
     const qs = nextParams.toString();
     router.push(qs ? `/payroll?${qs}` : "/payroll");
   }
 
-  async function handleCheckout(occupancyId: string) {
+  async function handleCheckoutRequest(occupancyId: string) {
     setCheckingOut(occupancyId);
     setError("");
     try {
-      await checkOutLodging({ occupancyId });
+      await requestHousingCheckout(occupancyId);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not check out.");
+      setError(e instanceof Error ? e.message : "Could not request checkout.");
     } finally {
       setCheckingOut(null);
     }
@@ -122,6 +140,7 @@ function PayrollContent() {
   const subject = profiles.find((p) => p.id === selected) ?? user;
   const propertyName = (propertyId: string) =>
     properties.find((p) => p.id === propertyId)?.name ?? "Property";
+  const isAdmin = canRunPayroll(user.role);
 
   return (
     <div className="space-y-8">
@@ -129,15 +148,17 @@ function PayrollContent() {
         eyebrow="Payroll"
         title="Live Payroll & Expenses"
         description={
-          tab === "payments"
-            ? canRunPayroll(user.role)
-              ? "Record payments and advances."
-              : "View your payment history."
-            : "View balance and expenses."
+          tab === "batch"
+            ? "Enter paid amounts against live balances."
+            : tab === "payments"
+              ? canRunPayroll(user.role)
+                ? "Record payments and advances."
+                : "View your payment history."
+              : "View balance and expenses."
         }
         actions={
           <div className="flex flex-wrap items-end gap-3">
-            {showPayments ? (
+            {showPayments || showBatch ? (
               <div className="flex rounded-full border border-ink/15 bg-white/70 p-1">
                 <Button
                   size="sm"
@@ -147,14 +168,26 @@ function PayrollContent() {
                 >
                   Expenses
                 </Button>
-                <Button
-                  size="sm"
-                  variant={tab === "payments" ? "primary" : "ghost"}
-                  className={tab === "payments" ? "" : "border-0 bg-transparent"}
-                  onClick={() => setTab("payments")}
-                >
-                  Payments
-                </Button>
+                {showPayments ? (
+                  <Button
+                    size="sm"
+                    variant={tab === "payments" ? "primary" : "ghost"}
+                    className={tab === "payments" ? "" : "border-0 bg-transparent"}
+                    onClick={() => setTab("payments")}
+                  >
+                    Payments
+                  </Button>
+                ) : null}
+                {showBatch ? (
+                  <Button
+                    size="sm"
+                    variant={tab === "batch" ? "primary" : "ghost"}
+                    className={tab === "batch" ? "" : "border-0 bg-transparent"}
+                    onClick={() => setTab("batch")}
+                  >
+                    Batch pay
+                  </Button>
+                ) : null}
               </div>
             ) : null}
             {tab === "expenses" && !lockedToSelf ? (
@@ -180,7 +213,9 @@ function PayrollContent() {
         }
       />
 
-      {tab === "payments" ? (
+      {tab === "batch" ? (
+        <PayrollBatchPanel />
+      ) : tab === "payments" ? (
         <PaymentsPanel />
       ) : (
         <>
@@ -190,22 +225,81 @@ function PayrollContent() {
             Viewing <span className="font-medium text-ink">{subject.firstName} {subject.lastName}</span>
           </p>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-            <StatCard label="Total pay (MTD)" value={formatCurrency(balance.totalPay)} />
-            <StatCard label="Total upfront (MTD)" value={formatCurrency(balance.totalUpfront)} />
-            <StatCard label="Total hold (MTD)" value={formatCurrency(balance.totalHold)} />
-            <StatCard label="Total expenses (MTD)" value={formatCurrency(balance.totalExpenses)} />
+            <StatCard label="Total pay (YTD)" value={formatCurrency(balance.totalPay)} />
+            <StatCard label="Total upfront (YTD)" value={formatCurrency(balance.totalUpfront)} />
+            <StatCard label="Total hold (YTD)" value={formatCurrency(balance.totalHold)} />
+            <StatCard label="Total expenses (YTD)" value={formatCurrency(balance.totalExpenses)} />
             <StatCard
               label="Live balance"
               value={formatCurrency(balance.liveBalance)}
               tone={balance.liveBalance < 0 ? "danger" : "success"}
-              hint={balance.liveBalance < 0 ? "Super Admin alerted" : "Upfront − expenses"}
+              hint={balance.liveBalance < 0 ? "Super Admin alerted" : "Upfront − expenses − paid"}
             />
           </div>
           {balance.liveBalance < 0 ? (
             <Card className="border-danger/30 bg-danger/8">
               <CardBody className="flex items-center gap-3">
                 <Badge tone="danger">Negative balance</Badge>
-                <p className="text-sm text-danger">Expenses exceed upfront allocation this month.</p>
+                <p className="text-sm text-danger">Expenses exceed upfront allocation this year.</p>
+              </CardBody>
+            </Card>
+          ) : null}
+          {isAdmin && properties.length > 0 ? (
+            <Card>
+              <CardBody className="space-y-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Housing rates</p>
+                  <p className="mt-1 text-sm text-ink/60">Edit full / half rates for open properties.</p>
+                </div>
+                <div className="space-y-3">
+                  {properties.slice(0, 8).map((p) => (
+                    <div key={p.id} className="flex flex-wrap items-end gap-3">
+                      <div className="min-w-[10rem] flex-1">
+                        <p className="text-sm font-medium text-ink">{p.name}</p>
+                      </div>
+                      <div className="w-28 space-y-1">
+                        <Label>Full</Label>
+                        <Input
+                          value={rateDraft[p.id]?.full ?? ""}
+                          onChange={(e) =>
+                            setRateDraft((prev) => ({
+                              ...prev,
+                              [p.id]: { full: e.target.value, half: prev[p.id]?.half ?? "" },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="w-28 space-y-1">
+                        <Label>Half</Label>
+                        <Input
+                          value={rateDraft[p.id]?.half ?? ""}
+                          onChange={(e) =>
+                            setRateDraft((prev) => ({
+                              ...prev,
+                              [p.id]: { full: prev[p.id]?.full ?? "", half: e.target.value },
+                            }))
+                          }
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          void updateHousingRates(
+                            p.id,
+                            parseFloat(rateDraft[p.id]?.full || "0") || 0,
+                            parseFloat(rateDraft[p.id]?.half || "0") || 0,
+                          )
+                            .then(load)
+                            .catch((e) =>
+                              setError(e instanceof Error ? e.message : "Could not update rates"),
+                            )
+                        }
+                      >
+                        Save rates
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </CardBody>
             </Card>
           ) : null}
@@ -214,15 +308,17 @@ function PayrollContent() {
               <CardBody className="space-y-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Open stays</p>
-                  <p className="mt-1 text-sm text-ink/60">Check out when you leave.</p>
+                  <p className="mt-1 text-sm text-ink/60">
+                    Request checkout to stop nightly accrual after admin approval.
+                  </p>
                 </div>
                 <DataTable>
                   <thead>
                     <tr>
                       <Th>Property</Th>
-                      <Th>Room</Th>
+                      <Th>Share</Th>
                       <Th>Check-in</Th>
-                      <Th align="right">Daily share</Th>
+                      <Th align="right">Daily</Th>
                       <Th />
                     </tr>
                   </thead>
@@ -230,19 +326,23 @@ function PayrollContent() {
                     {openStays.map((stay) => (
                       <tr key={stay.id}>
                         <Td>{propertyName(stay.propertyId)}</Td>
-                        <Td>{stay.roomNumber || "—"}</Td>
+                        <Td>{stay.shareKind ?? "full"}</Td>
                         <Td>{formatDate(stay.checkInAt.slice(0, 10))}</Td>
                         <Td align="right">
                           {stay.dailyAmount != null ? formatCurrency(stay.dailyAmount) : "—"}
                         </Td>
                         <Td>
-                          <Button
-                            size="sm"
-                            disabled={checkingOut === stay.id}
-                            onClick={() => void handleCheckout(stay.id)}
-                          >
-                            {checkingOut === stay.id ? "Checking out…" : "Check out"}
-                          </Button>
+                          {stay.checkoutRequestedAt ? (
+                            <Badge tone="warning">Pending approval</Badge>
+                          ) : (
+                            <Button
+                              size="sm"
+                              disabled={checkingOut === stay.id}
+                              onClick={() => void handleCheckoutRequest(stay.id)}
+                            >
+                              {checkingOut === stay.id ? "Requesting…" : "Request checkout"}
+                            </Button>
+                          )}
                         </Td>
                       </tr>
                     ))}
@@ -301,3 +401,4 @@ export default function PayrollPage() {
     </Suspense>
   );
 }
+

@@ -135,8 +135,8 @@ export default function DashboardPage() {
               tone={balance.liveBalance < 0 ? "danger" : "success"}
             />
             <StatCard label="Hold balance" value={formatCurrency(balance.totalHold)} />
-            <StatCard label="Total pay (MTD)" value={formatCurrency(balance.totalPay)} />
-            <StatCard label="Expenses (MTD)" value={formatCurrency(balance.totalExpenses)} />
+            <StatCard label="Total pay (YTD)" value={formatCurrency(balance.totalPay)} />
+            <StatCard label="Expenses (YTD)" value={formatCurrency(balance.totalExpenses)} />
           </>
         ) : null}
 

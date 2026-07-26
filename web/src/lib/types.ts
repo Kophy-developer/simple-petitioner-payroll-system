@@ -18,6 +18,7 @@ export type ExpenseType =
   | "car_rental"
   | "housing"
   | "flight"
+  | "gas"
   | "other";
 export type PayrollRecordStatus = "draft" | "locked";
 export type ExpenseConfigType = "standard" | "per_issue";
@@ -64,6 +65,38 @@ export type DemoUser = {
   subAccountCode?: string | null;
   mustChangePassword?: boolean;
   onboardingComplete?: boolean;
+  inviteSentAt?: string | null;
+  isLotus?: boolean;
+};
+
+export type HousingShareKind = "full" | "half" | "skip";
+
+export type RentalCarAssignment = {
+  id: string;
+  userId: string;
+  pickupAt: string;
+  returnAt: string | null;
+  agreementNumber: string | null;
+  pickupLocation: string | null;
+  dropoffLocation: string | null;
+  oneWayFee: number;
+  monthlyAccrualAmount: number;
+  active: boolean;
+  lastAccruedOn: string | null;
+  truedUpAt: string | null;
+};
+
+export type BrexTransaction = {
+  id: string;
+  brexId: string;
+  cardholderName: string | null;
+  amount: number;
+  occurredAt: string | null;
+  merchantName: string | null;
+  description: string | null;
+  matchedUserId: string | null;
+  reimbursementRequested: boolean;
+  reimbursementStatus: "none" | "pending" | "approved" | "rejected";
 };
 
 export type Petition = {
@@ -278,6 +311,8 @@ export type LodgingProperty = {
   dailyTotal: number | null;
   roomCount: number | null;
   roomRate: number | null;
+  fullRate?: number | null;
+  halfRate?: number | null;
 };
 
 export type LodgingOccupancy = {
@@ -291,4 +326,7 @@ export type LodgingOccupancy = {
   checkOutDate: string | null;
   checkOutBackdated: boolean;
   dailyAmount: number | null;
+  shareKind?: HousingShareKind;
+  checkoutRequestedAt?: string | null;
+  checkoutApprovedAt?: string | null;
 };

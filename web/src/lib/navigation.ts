@@ -27,7 +27,9 @@ export const navItems: NavItem[] = [
   { href: "/directory", label: "Employee Directory", roles: ["super_admin", "account_admin"], section: "People" },
   { href: "/ledger", label: "Ledger", roles: ["super_admin", "account_admin", "team_lead", "petitioner"], section: "Payroll", matchPrefix: true },
   { href: "/payroll", label: "Payroll & Expenses", roles: ["super_admin", "account_admin", "team_lead", "petitioner", "canvasser"], section: "Payroll", matchPrefix: true },
-  { href: "/loans", label: "Loans & Advances", roles: ["super_admin", "team_lead", "petitioner", "canvasser"], section: "Payroll", matchPrefix: true },
+  { href: "/brex", label: "Brex", roles: ["super_admin", "account_admin", "team_lead", "petitioner", "canvasser"], section: "Payroll" },
+  { href: "/loans", label: "Loans & Advances", roles: ["super_admin", "account_admin", "team_lead", "petitioner", "canvasser"], section: "Payroll", matchPrefix: true },
+  { href: "/colorado-import", label: "CO Validity Drop", roles: ["super_admin", "account_admin", "validator"], section: "Collection" },
   { href: "/admin", label: "Admin Panel", roles: ["super_admin", "account_admin"], section: "Configuration", matchPrefix: true },
 ];
 
@@ -35,10 +37,10 @@ const deepLinkAccess: { href: string; roles: UserRole[]; matchPrefix?: boolean }
   { href: "/lotus-ledger", roles: ["super_admin", "account_admin"] },
   {
     href: "/payments",
-    roles: ["super_admin", "team_lead", "petitioner", "canvasser"],
+    roles: ["super_admin", "account_admin", "team_lead", "petitioner", "canvasser"],
     matchPrefix: true,
   },
-  { href: "/pay-rates", roles: ["super_admin"] },
+  { href: "/pay-rates", roles: ["super_admin", "account_admin"] },
   { href: "/expense-config", roles: ["super_admin", "account_admin"] },
   { href: "/field-ops", roles: ["super_admin", "account_admin"] },
 ];
@@ -50,7 +52,7 @@ export function getNavForRole(role: UserRole) {
 export function roleLabel(role: UserRole) {
   const labels: Record<UserRole, string> = {
     super_admin: "Super Admin",
-    account_admin: "Account Admin",
+    account_admin: "Admin",
     team_lead: "Team Lead",
     petitioner: "Petitioner",
     canvasser: "Canvasser",
@@ -98,6 +100,7 @@ export function canAccessLotusLedger(role: UserRole) {
 export function canAccessPayments(role: UserRole) {
   return (
     role === "super_admin" ||
+    role === "account_admin" ||
     role === "team_lead" ||
     role === "petitioner" ||
     role === "canvasser"
@@ -105,7 +108,7 @@ export function canAccessPayments(role: UserRole) {
 }
 
 export function canAccessPayRates(role: UserRole) {
-  return role === "super_admin";
+  return role === "super_admin" || role === "account_admin";
 }
 
 export function canAccessExpenseConfig(role: UserRole) {

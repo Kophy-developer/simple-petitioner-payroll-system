@@ -9,7 +9,7 @@ export function canViewTeamData(role: UserRole) {
 }
 
 export function canEditFinancialConfig(role: UserRole) {
-  return role === "super_admin";
+  return role === "super_admin" || role === "account_admin";
 }
 
 export function canApproveLoans(role: UserRole) {
@@ -21,7 +21,7 @@ export function isFieldRole(role: UserRole) {
 }
 
 export function canRunPayroll(role: UserRole) {
-  return role === "super_admin";
+  return role === "super_admin" || role === "account_admin";
 }
 
 export function canRequestLoan(role: UserRole) {
@@ -37,7 +37,7 @@ export function canEditSubmissions(role: UserRole) {
 }
 
 export function canManageUsers(role: UserRole) {
-  return role === "super_admin";
+  return role === "super_admin" || role === "account_admin";
 }
 
 export function visibleUserIds(viewer: DemoUser, allUserIds: string[]) {

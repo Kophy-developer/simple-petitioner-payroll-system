@@ -60,6 +60,39 @@ cd web
 npm run test:payroll
 ```
 
+## Environment
+
+Copy `web/.env.example` to `web/.env.local`. Important server-only vars:
+
+| Variable | Purpose |
+|---|---|
+| `SUPABASE_SERVICE_ROLE_KEY` | Admin user create / roster / invites |
+| `CRON_SECRET` | Bearer token for `/api/cron/*` |
+| `BREX_API_TOKEN` | Brex API sync (never commit a real token; rotate if leaked) |
+
+## Field Ops accrual cron
+
+Schedule a daily call shortly after midnight **America/Denver**:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://your-host/api/cron/field-ops-accrual
+```
+
+## Migrations
+
+Apply new Supabase migrations on the droplet / host before relying on Field Ops, Brex, invites, or batch payroll:
+
+```bash
+supabase db push
+# or: supabase migration up
+```
+
+Latest product migration: `supabase/migrations/20260726083632_locked_product_features.sql`
+
+## Colorado validity drop folder
+
+Place vendor files in `data/colorado-validity-drop/` (see README there). UI scaffold: **CO Validity Drop** in the app.
+
 ## Vercel
 
 Root directory: `web`

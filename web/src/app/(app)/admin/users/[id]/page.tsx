@@ -11,7 +11,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { roleLabel } from "@/lib/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile, updateUserAdmin } from "@/lib/api/live";
-import { listSubAccounts, setUserSubAccount } from "@/lib/api/remodel";
+import { listSubAccounts, setUserLotus, setUserSubAccount } from "@/lib/api/remodel";
 import type { DemoUser, SubAccount, UserRole, UserStatus, WageCurrency } from "@/lib/types";
 
 export default function AdminUserPage({ params }: { params: Promise<{ id: string }> }) {
@@ -22,6 +22,7 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
   const [hourlyWage, setHourlyWage] = useState("");
   const [currency, setCurrency] = useState<WageCurrency>("USD");
   const [employeeId, setEmployeeId] = useState("");
+  const [isLotus, setIsLotus] = useState(false);
   const [subAccountId, setSubAccountId] = useState("");
   const [accounts, setAccounts] = useState<SubAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +41,7 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
           setHourlyWage(profile.hourlyWage !== undefined ? String(profile.hourlyWage) : "");
           setCurrency(profile.wageCurrency ?? "USD");
           setEmployeeId(profile.employeeId ?? "");
+          setIsLotus(!!profile.isLotus);
           setSubAccountId(profile.subAccountId ?? subs.find((s) => s.isPrimary)?.id ?? "");
         }
       })
@@ -66,11 +68,13 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
         .update({ employee_id: employeeId.trim() || null })
         .eq("id", id);
       if (empErr) throw empErr;
+      await setUserLotus(id, isLotus);
       if (subAccountId) await setUserSubAccount(id, subAccountId);
       setUser({
         ...updated,
         employeeId: employeeId.trim() || null,
         subAccountId: subAccountId || null,
+        isLotus,
       });
       setSaved(true);
     } catch (err) {
@@ -143,6 +147,15 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
                 </Select>
               </div>
             </div>
+            <label className="flex items-center gap-2 text-sm text-ink/70">
+              <input
+                type="checkbox"
+                checked={isLotus}
+                onChange={(e) => setIsLotus(e.target.checked)}
+                className="h-4 w-4 accent-brass"
+              />
+              Lotus team member (firm ledger later; no personal batch pay this phase)
+            </label>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Hourly wage</Label>

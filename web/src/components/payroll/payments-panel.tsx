@@ -238,7 +238,7 @@ export function PaymentsPanel({ showRecordAction = true }: { showRecordAction?: 
               <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Paystub / receipt</Label>
+              <Label>Paystub / receipt (optional)</Label>
               <Input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             </div>
             <Button type="submit" className="w-full" disabled={saving}>

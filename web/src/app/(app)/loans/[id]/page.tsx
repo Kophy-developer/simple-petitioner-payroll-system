@@ -66,7 +66,8 @@ export default function LoanDetailPage({ params }: { params: Promise<{ id: strin
         return;
       }
       const isApprover = canApproveLoans(user.role);
-      const canView = isApprover || loan.userId === authUserId(user);
+      const isAdminPlus = user.role === "super_admin" || user.role === "account_admin";
+      const canView = isApprover || isAdminPlus || loan.userId === authUserId(user);
       if (!canView) {
         setRequest(null);
         return;
@@ -111,6 +112,7 @@ export default function LoanDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   const isApprover = canApproveLoans(user.role);
+  const isAdminPlus = user.role === "super_admin" || user.role === "account_admin";
   const canAct = isApprover && request.status === "pending";
   const exceedsHold = request.amount > request.holdSnapshot;
   const exceedsCurrentHold = request.amount > balance.totalHold;
@@ -132,15 +134,15 @@ export default function LoanDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   async function markPaid() {
-    if (!request || !receiptFile) {
-      setError("Receipt is required to mark an advance paid.");
-      return;
-    }
+    if (!request) return;
     setActing(true);
     setError("");
     setMessage("");
     try {
-      const receiptPath = await uploadPaymentReceipt(request.userId, receiptFile);
+      let receiptPath: string | null = null;
+      if (receiptFile) {
+        receiptPath = await uploadPaymentReceipt(request.userId, receiptFile);
+      }
       await createPaymentEvent({
         userId: request.userId,
         bucket: "loans_advances",
@@ -151,7 +153,11 @@ export default function LoanDetailPage({ params }: { params: Promise<{ id: strin
         fundsHitAt: fundsHitAt || null,
         loanId: request.id,
       });
-      setMessage("Advance marked paid with receipt.");
+      setMessage(
+        receiptFile
+          ? "Advance marked paid with receipt."
+          : "Advance marked paid. Receipt can be uploaded later.",
+      );
       setReceiptFile(null);
       await load();
     } catch (e) {
@@ -211,13 +217,14 @@ export default function LoanDetailPage({ params }: { params: Promise<{ id: strin
 
             {exceedsHold || exceedsCurrentHold ? (
               <div className="rounded-xl bg-warning/15 px-4 py-3 text-sm text-ink/80">
+                Hold shown for context only. Advances deduct from live balance and may go negative.
                 {exceedsHold
-                  ? "Requested amount exceeds the hold balance recorded at submission."
-                  : "Requested amount exceeds the contractor’s current hold balance."}
+                  ? " Requested amount exceeds the hold recorded at submission."
+                  : " Requested amount exceeds current hold."}
               </div>
             ) : (
               <div className="rounded-xl bg-success/10 px-4 py-3 text-sm text-success">
-                Requested amount is within the hold balance recorded at submission.
+                Hold at submission covers this amount (context only — deduction is from live balance).
               </div>
             )}
 
@@ -239,13 +246,13 @@ export default function LoanDetailPage({ params }: { params: Promise<{ id: strin
               </div>
             ) : null}
 
-            {isApprover && request.status === "approved" && !paidEvent ? (
+            {isAdminPlus && request.status === "approved" && !paidEvent ? (
               <div className="space-y-3 border-t border-ink/10 pt-5">
                 <p className="text-sm text-ink/70">
-                  Approved is not paid. Attach a receipt to log the disbursement.
+                  Approved is not paid. Receipt and funds-hit date are optional and can be added later.
                 </p>
                 <div className="space-y-2">
-                  <Label htmlFor="loan-receipt">Receipt</Label>
+                  <Label htmlFor="loan-receipt">Receipt (optional)</Label>
                   <Input
                     id="loan-receipt"
                     type="file"
@@ -262,7 +269,7 @@ export default function LoanDetailPage({ params }: { params: Promise<{ id: strin
                     onChange={(e) => setFundsHitAt(e.target.value)}
                   />
                 </div>
-                <Button disabled={acting || !receiptFile} onClick={() => void markPaid()}>
+                <Button disabled={acting} onClick={() => void markPaid()}>
                   {acting ? "Saving…" : "Mark paid"}
                 </Button>
               </div>
@@ -307,8 +314,8 @@ export default function LoanDetailPage({ params }: { params: Promise<{ id: strin
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
             <StatCard label="Current hold" value={formatCurrency(balance.totalHold)} />
             <StatCard label="Live balance" value={formatCurrency(balance.liveBalance)} tone={balance.liveBalance < 0 ? "danger" : "default"} />
-            <StatCard label="Total pay (MTD)" value={formatCurrency(balance.totalPay)} />
-            <StatCard label="Expenses (MTD)" value={formatCurrency(balance.totalExpenses)} />
+            <StatCard label="Total pay (YTD)" value={formatCurrency(balance.totalPay)} />
+            <StatCard label="Expenses (YTD)" value={formatCurrency(balance.totalExpenses)} />
           </div>
         </div>
       </div>

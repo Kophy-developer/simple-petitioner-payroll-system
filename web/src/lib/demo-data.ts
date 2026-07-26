@@ -127,13 +127,28 @@ export const expenseConfig: ExpenseConfig = {
 export const expenseTypeLabels: Record<Expense["type"], string> = {
   upfront_draw: "Upfront Draw",
   chargeback: "Chargeback",
-  hotel_travel: "Hotel",
+  hotel_travel: "Housing",
   health: "Health",
   car_rental: "Car Rental",
-  housing: "Airbnb",
+  housing: "Housing",
   flight: "Flight",
+  gas: "Gas",
   other: "Other",
 };
+
+export const expenseFormTypes: Expense["type"][] = [
+  "flight",
+  "gas",
+  "other",
+];
+
+export const adminExpenseFormTypes: Expense["type"][] = [
+  "flight",
+  "gas",
+  "other",
+  "chargeback",
+  "health",
+];
 
 export const loanStatusLabels: Record<LoanRequest["status"], string> = {
   pending: "Pending",

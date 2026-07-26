@@ -30,7 +30,6 @@ export default function ProfilePage() {
       await updateUser({
         firstName: String(data.get("firstName")),
         lastName: String(data.get("lastName")),
-        initials: String(data.get("initials")),
         phone: String(data.get("phone") || "").trim() || null,
         profileTags: String(data.get("tags"))
           .split(",")
@@ -65,10 +64,6 @@ export default function ProfilePage() {
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="initials">Initials</Label>
-                <Input id="initials" name="initials" defaultValue={user.initials} maxLength={3} />
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone</Label>
                 <Input id="phone" name="phone" type="tel" defaultValue={user.phone ?? ""} />
