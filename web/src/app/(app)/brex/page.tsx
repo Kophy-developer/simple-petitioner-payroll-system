@@ -10,7 +10,7 @@ export default function BrexPage() {
       <PageHeader
         eyebrow="Payroll"
         title="Brex reimbursements"
-        description="Sync card activity and credit live balances after admin approval."
+        description="Sync stores all Brex expenses; only successful spend is matched (email, card owner, Brex ID, or a single ≥80% name match). Matched people can dispute; admins resolve."
       />
       <Card>
         <CardBody>

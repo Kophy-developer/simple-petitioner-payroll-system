@@ -22,6 +22,7 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
   const [hourlyWage, setHourlyWage] = useState("");
   const [currency, setCurrency] = useState<WageCurrency>("USD");
   const [employeeId, setEmployeeId] = useState("");
+  const [brexUserId, setBrexUserId] = useState("");
   const [isLotus, setIsLotus] = useState(false);
   const [subAccountId, setSubAccountId] = useState("");
   const [accounts, setAccounts] = useState<SubAccount[]>([]);
@@ -41,6 +42,7 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
           setHourlyWage(profile.hourlyWage !== undefined ? String(profile.hourlyWage) : "");
           setCurrency(profile.wageCurrency ?? "USD");
           setEmployeeId(profile.employeeId ?? "");
+          setBrexUserId(profile.brexUserId ?? "");
           setIsLotus(!!profile.isLotus);
           setSubAccountId(profile.subAccountId ?? subs.find((s) => s.isPrimary)?.id ?? "");
         }
@@ -65,7 +67,10 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
       const supabase = createClient();
       const { error: empErr } = await supabase
         .from("profiles")
-        .update({ employee_id: employeeId.trim() || null })
+        .update({
+          employee_id: employeeId.trim() || null,
+          brex_user_id: brexUserId.trim() || null,
+        })
         .eq("id", id);
       if (empErr) throw empErr;
       await setUserLotus(id, isLotus);
@@ -73,6 +78,7 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
       setUser({
         ...updated,
         employeeId: employeeId.trim() || null,
+        brexUserId: brexUserId.trim() || null,
         subAccountId: subAccountId || null,
         isLotus,
       });
@@ -137,15 +143,23 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
                 <Input value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Sub-account</Label>
-                <Select value={subAccountId} onChange={(e) => setSubAccountId(e.target.value)}>
-                  {accounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.code} — {a.name}
-                    </option>
-                  ))}
-                </Select>
+                <Label>Brex user ID</Label>
+                <Input
+                  value={brexUserId}
+                  onChange={(e) => setBrexUserId(e.target.value)}
+                  placeholder="cuuser_…"
+                />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Sub-account</Label>
+              <Select value={subAccountId} onChange={(e) => setSubAccountId(e.target.value)}>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.code} — {a.name}
+                  </option>
+                ))}
+              </Select>
             </div>
             <label className="flex items-center gap-2 text-sm text-ink/70">
               <input

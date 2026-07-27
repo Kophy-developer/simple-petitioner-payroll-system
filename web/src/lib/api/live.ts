@@ -47,6 +47,7 @@ function mapProfile(row: {
   hourly_wage: number | null;
   profile_tags: string[] | null;
   employee_id?: string | null;
+  brex_user_id?: string | null;
   phone?: string | null;
   sub_account_id?: string | null;
   must_change_password?: boolean | null;
@@ -68,6 +69,7 @@ function mapProfile(row: {
     wageCurrency: row.wage_currency ?? undefined,
     hourlyWage: row.hourly_wage ?? undefined,
     employeeId: row.employee_id,
+    brexUserId: row.brex_user_id,
     phone: row.phone,
     subAccountId: row.sub_account_id,
     mustChangePassword: !!row.must_change_password,
@@ -234,7 +236,7 @@ export async function getProfile(userId: string) {
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags, employee_id, phone, sub_account_id, must_change_password, onboarding_complete, invite_sent_at, is_lotus",
+      "id, first_name, last_name, initials, email, role, status, wage_currency, hourly_wage, profile_tags, employee_id, brex_user_id, phone, sub_account_id, must_change_password, onboarding_complete, invite_sent_at, is_lotus",
     )
     .eq("id", userId)
     .maybeSingle();

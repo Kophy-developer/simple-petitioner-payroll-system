@@ -60,6 +60,7 @@ export type DemoUser = {
   teamMemberIds?: string[];
   authId?: string;
   employeeId?: string | null;
+  brexUserId?: string | null;
   phone?: string | null;
   subAccountId?: string | null;
   subAccountCode?: string | null;
@@ -86,6 +87,13 @@ export type RentalCarAssignment = {
   truedUpAt: string | null;
 };
 
+export type BrexMatchMethod =
+  | "email"
+  | "card_owner_email"
+  | "brex_user_id"
+  | "name_exact"
+  | "name_similar";
+
 export type BrexTransaction = {
   id: string;
   brexId: string;
@@ -94,9 +102,17 @@ export type BrexTransaction = {
   occurredAt: string | null;
   merchantName: string | null;
   description: string | null;
+  memo: string | null;
+  expenseStatus: string | null;
+  paymentStatus: string | null;
+  brexUserEmail: string | null;
+  matchMethod: BrexMatchMethod | null;
+  matchConfidence: number | null;
   matchedUserId: string | null;
+  disputedAt: string | null;
+  disputeNote: string | null;
   reimbursementRequested: boolean;
-  reimbursementStatus: "none" | "pending" | "approved" | "rejected";
+  reimbursementStatus: "none" | "pending" | "approved" | "rejected" | "disputed";
 };
 
 export type Petition = {

@@ -1045,7 +1045,7 @@ export async function listBrexTransactions() {
   const { data, error } = await supabase
     .from("brex_transactions")
     .select(
-      "id, brex_id, cardholder_name, amount, occurred_at, merchant_name, description, matched_user_id, reimbursement_requested, reimbursement_status",
+      "id, brex_id, cardholder_name, amount, occurred_at, merchant_name, description, memo, expense_status, payment_status, brex_user_email, match_method, match_confidence, matched_user_id, disputed_at, dispute_note, reimbursement_requested, reimbursement_status",
     )
     .order("occurred_at", { ascending: false });
   if (error) throw error;
@@ -1058,7 +1058,15 @@ export async function listBrexTransactions() {
       occurredAt: row.occurred_at,
       merchantName: row.merchant_name,
       description: row.description,
+      memo: row.memo,
+      expenseStatus: row.expense_status,
+      paymentStatus: row.payment_status,
+      brexUserEmail: row.brex_user_email,
+      matchMethod: row.match_method as BrexTransaction["matchMethod"],
+      matchConfidence: row.match_confidence == null ? null : num(row.match_confidence),
       matchedUserId: row.matched_user_id,
+      disputedAt: row.disputed_at,
+      disputeNote: row.dispute_note,
       reimbursementRequested: !!row.reimbursement_requested,
       reimbursementStatus: row.reimbursement_status as BrexTransaction["reimbursementStatus"],
     }),
@@ -1076,6 +1084,24 @@ export async function reviewBrexReimbursement(id: string, approve: boolean) {
   const { error } = await supabase.rpc("review_brex_reimbursement", {
     p_brex_id: id,
     p_approve: approve,
+  });
+  if (error) throw error;
+}
+
+export async function disputeBrexTransaction(id: string, note?: string) {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("dispute_brex_transaction", {
+    p_brex_id: id,
+    p_note: note?.trim() || null,
+  });
+  if (error) throw error;
+}
+
+export async function resolveBrexDispute(id: string, confirm: boolean) {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("resolve_brex_dispute", {
+    p_brex_id: id,
+    p_confirm: confirm,
   });
   if (error) throw error;
 }
