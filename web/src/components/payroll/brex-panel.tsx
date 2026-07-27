@@ -116,17 +116,13 @@ export function BrexPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-ink/65">
-          Sync stores all Brex expenses. Only successful spend is matched by email, card-owner email,
-          Brex user ID, or a single high-confidence name match (≥80%). Matched people can dispute.
-        </p>
-        {isAdmin ? (
+      {isAdmin ? (
+        <div className="flex flex-wrap items-center justify-end gap-3">
           <Button onClick={() => void sync()} disabled={syncing}>
             {syncing ? "Syncing…" : "Sync Brex"}
           </Button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
       {message ? (
         <p className="rounded-xl bg-success/10 px-4 py-3 text-sm text-success">{message}</p>
