@@ -21,7 +21,7 @@ export const navItems: NavItem[] = [
   { href: "/payroll", label: "Payroll & Expenses", roles: ["super_admin", "account_admin", "team_lead", "petitioner"], section: "Payroll", matchPrefix: true },
   { href: "/brex", label: "Brex", roles: ["super_admin", "account_admin", "team_lead", "petitioner"], section: "Payroll" },
   { href: "/loans", label: "Loans & Advances", roles: ["super_admin", "account_admin", "team_lead", "petitioner"], section: "Payroll", matchPrefix: true },
-  { href: "/colorado-import", label: "CO Validity Drop", roles: ["super_admin", "account_admin"], section: "Collection" },
+  { href: "/colorado-import", label: "Imports", roles: ["super_admin", "account_admin"], section: "Collection" },
   { href: "/admin", label: "Admin Panel", roles: ["super_admin", "account_admin"], section: "Configuration", matchPrefix: true },
 ];
 
