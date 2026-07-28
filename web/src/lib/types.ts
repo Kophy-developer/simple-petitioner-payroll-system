@@ -348,6 +348,7 @@ export type LodgingOccupancy = {
   checkOutBackdated: boolean;
   dailyAmount: number | null;
   shareKind?: HousingShareKind;
+  plannedCheckOutDate?: string | null;
   checkoutRequestedAt?: string | null;
   checkoutApprovedAt?: string | null;
 };

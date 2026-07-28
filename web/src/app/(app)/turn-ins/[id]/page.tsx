@@ -148,8 +148,7 @@ export default function TurnInDetailPage() {
               {people.map((person) => (
                 <tr key={person.id} className="border-b border-ink/8">
                   <td className="px-4 py-3 font-medium">
-                    {person.firstName} {person.lastName}{" "}
-                    <span className="text-ink/45">({person.initials})</span>
+                    {person.firstName} {person.lastName}
                   </td>
                   {columns.map((col) => {
                     const key = `${person.id}:${col.id}`;

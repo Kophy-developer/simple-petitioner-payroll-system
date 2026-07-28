@@ -123,8 +123,7 @@ export default function CollectionPage() {
                         }
                         className="font-medium text-civic-navy hover:underline"
                       >
-                        {u?.firstName} {u?.lastName}{" "}
-                        <span className="text-ink/45">({u?.initials ?? "—"})</span>
+                        {u?.firstName} {u?.lastName}
                       </Link>
                     </Td>
                     <Td align="right">{row.rawSignatures}</Td>

@@ -332,7 +332,7 @@ function LedgerContent() {
                   id="ledger-search"
                   value={searchDraft}
                   onChange={(e) => setSearchDraft(e.target.value)}
-                  placeholder="Name or initials"
+                  placeholder="Name"
                 />
               </div>
               <div className="w-48 space-y-2">
@@ -381,14 +381,7 @@ function LedgerContent() {
                   {overview.map((row) => (
                     <tr key={row.userId}>
                       <Td>
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-civic-navy/10 text-[11px] font-semibold text-civic-navy">
-                            {row.initials}
-                          </span>
-                          <span>
-                            {row.firstName} {row.lastName}
-                          </span>
-                        </div>
+                        {row.firstName} {row.lastName}
                       </Td>
                       <Td align="right">{row.issueCount}</Td>
                       <Td align="right">
@@ -460,7 +453,6 @@ function LedgerContent() {
             <h2 className="font-display text-2xl text-ink">
               {subject.firstName} {subject.lastName}
             </h2>
-            <Badge tone="navy">{subject.initials}</Badge>
             {multiUser ? (
               <button
                 type="button"

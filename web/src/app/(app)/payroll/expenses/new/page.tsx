@@ -28,7 +28,6 @@ export default function NewExpensePage() {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [error, setError] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [markBrex, setMarkBrex] = useState(false);
 
   useEffect(() => {
     void listIssues()
@@ -78,7 +77,6 @@ export default function NewExpensePage() {
           <CardBody className="space-y-4">
             <p className="text-sm text-ink/70">
               {expenseTypeLabels[type]} · {amount ? `$${amount}` : "suggested amount"}
-              {markBrex ? " · flagged for Brex reimbursement review when matched" : ""}
             </p>
             <div className="flex gap-3">
               <Link href="/payroll">
@@ -90,7 +88,6 @@ export default function NewExpensePage() {
                   setSaved(false);
                   setAmount("");
                   setReceiptFile(null);
-                  setMarkBrex(false);
                 }}
               >
                 Add another
@@ -159,15 +156,6 @@ export default function NewExpensePage() {
               <Label>Receipt (optional)</Label>
               <Input type="file" onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)} />
             </div>
-            <label className="flex items-center gap-2 text-sm text-ink/70">
-              <input
-                type="checkbox"
-                checked={markBrex}
-                onChange={(e) => setMarkBrex(e.target.checked)}
-                className="h-4 w-4 accent-brass"
-              />
-              Mark for Brex reimbursement when card sync matches
-            </label>
             <Button type="submit" className="w-full" disabled={saving}>
               {saving ? "Saving…" : "Save expense"}
             </Button>

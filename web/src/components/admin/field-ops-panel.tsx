@@ -51,6 +51,7 @@ export function FieldOpsPanel() {
   const [halfRate, setHalfRate] = useState("");
   const [propertyId, setPropertyId] = useState("");
   const [checkIn, setCheckIn] = useState(todayIso());
+  const [plannedCheckOut, setPlannedCheckOut] = useState("");
   const [shares, setShares] = useState<Record<string, HousingShareKind>>({});
   const [keepId, setKeepId] = useState("");
   const [mergeId, setMergeId] = useState("");
@@ -146,9 +147,11 @@ export function FieldOpsPanel() {
         checkIn,
         fullRate: parseFloat(fullRate) || 0,
         halfRate: parseFloat(halfRate) || 0,
+        plannedCheckOut: plannedCheckOut || null,
         assignments,
       });
       setMessage(`Assigned ${count} stay(s). Nightly accrual runs at midnight Mountain Time.`);
+      setPlannedCheckOut("");
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not assign housing.");
@@ -384,7 +387,7 @@ export function FieldOpsPanel() {
           <Card>
             <CardBody className="space-y-4">
               <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Bulk assign stays</p>
-              <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-5">
                 <div className="space-y-2 md:col-span-2">
                   <Label>Property</Label>
                   <Select
@@ -406,6 +409,15 @@ export function FieldOpsPanel() {
                 <div className="space-y-2">
                   <Label>Check-in</Label>
                   <Input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Planned checkout</Label>
+                  <Input
+                    type="date"
+                    value={plannedCheckOut}
+                    min={checkIn}
+                    onChange={(e) => setPlannedCheckOut(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Full / Half</Label>
@@ -459,6 +471,7 @@ export function FieldOpsPanel() {
                     <Th>User</Th>
                     <Th>Share</Th>
                     <Th>Check-in</Th>
+                    <Th>Planned out</Th>
                     <Th>Checkout</Th>
                     <Th align="right">Daily</Th>
                     <Th />
@@ -475,6 +488,11 @@ export function FieldOpsPanel() {
                           <Badge>{occ.shareKind ?? "full"}</Badge>
                         </Td>
                         <Td>{formatDate(occ.checkInAt.slice(0, 10))}</Td>
+                        <Td>
+                          {occ.plannedCheckOutDate
+                            ? formatDate(occ.plannedCheckOutDate)
+                            : "—"}
+                        </Td>
                         <Td>
                           {occ.checkoutRequestedAt ? (
                             <Badge tone="warning">Requested</Badge>
@@ -520,7 +538,7 @@ export function FieldOpsPanel() {
                   })}
                   {occupancies.length === 0 ? (
                     <tr>
-                      <Td colSpan={7}>
+                      <Td colSpan={8}>
                         <p className="py-6 text-center text-sm text-ink/50">No open stays.</p>
                       </Td>
                     </tr>

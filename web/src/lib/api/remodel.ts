@@ -119,7 +119,7 @@ export async function listTurnIns() {
 
 export async function createTurnIn(input: {
   turnInNumber: string;
-  name: string;
+  name?: string;
   state: string;
   turnInDate?: string | null;
   benchmarkPct: number;
@@ -132,7 +132,7 @@ export async function createTurnIn(input: {
     .from("turn_ins")
     .insert({
       turn_in_number: turnInNumber,
-      name: (input.name.trim() || turnInNumber),
+      name: turnInNumber,
       state: input.state.trim().toUpperCase(),
       turn_in_date: input.turnInDate || null,
       benchmark_pct: input.benchmarkPct,
@@ -156,7 +156,7 @@ export async function createTurnIn(input: {
     await linkTurnInToSubmissionIssue({
       turnInId: data.id as string,
       turnInNumber,
-      name: input.name.trim() || turnInNumber,
+      name: turnInNumber,
       state: input.state.trim().toUpperCase(),
       turnInDate: input.turnInDate || null,
       pricedLineIds: input.pricedLineIds,
@@ -538,6 +538,7 @@ function mapLodgingOccupancy(row: {
   check_out_backdated: boolean;
   daily_amount: number | string | null;
   share_kind?: string | null;
+  planned_check_out_date?: string | null;
   checkout_requested_at?: string | null;
   checkout_approved_at?: string | null;
 }): LodgingOccupancy {
@@ -553,6 +554,7 @@ function mapLodgingOccupancy(row: {
     checkOutBackdated: !!row.check_out_backdated,
     dailyAmount: row.daily_amount == null ? null : num(row.daily_amount),
     shareKind: (row.share_kind as LodgingOccupancy["shareKind"]) ?? "full",
+    plannedCheckOutDate: row.planned_check_out_date ?? null,
     checkoutRequestedAt: row.checkout_requested_at ?? null,
     checkoutApprovedAt: row.checkout_approved_at ?? null,
   };
@@ -605,7 +607,7 @@ export async function listOpenLodgingOccupancies(userId?: string) {
   let query = supabase
     .from("lodging_occupancies")
     .select(
-      "id, property_id, user_id, room_number, occupants_in_room, check_in_at, check_out_at, check_out_date, check_out_backdated, daily_amount, share_kind, checkout_requested_at, checkout_approved_at",
+      "id, property_id, user_id, room_number, occupants_in_room, check_in_at, check_out_at, check_out_date, check_out_backdated, daily_amount, share_kind, planned_check_out_date, checkout_requested_at, checkout_approved_at",
     )
     .is("check_out_at", null)
     .is("check_out_date", null)
@@ -871,7 +873,7 @@ export async function importTurnInReport(input: {
     for (const entry of issue.entries) {
       const userId = resolveCirculatorFromReportRow(entry, input.profiles);
       if (!userId) {
-        const label = `${entry.firstName} ${entry.lastName} (${entry.initials})`.trim();
+        const label = `${entry.firstName} ${entry.lastName}`.trim() || entry.initials;
         if (!unmatchedSet.has(label)) {
           unmatchedSet.add(label);
           unmatched.push(label);
@@ -934,6 +936,7 @@ export async function bulkAssignHousing(input: {
   checkIn: string;
   fullRate: number;
   halfRate: number;
+  plannedCheckOut?: string | null;
   assignments: { userId: string; shareKind: HousingShareKind; roomNumber?: string }[];
 }) {
   const supabase = createClient();
@@ -947,6 +950,7 @@ export async function bulkAssignHousing(input: {
       share_kind: a.shareKind,
       room_number: a.roomNumber ?? "",
     })),
+    p_planned_check_out: input.plannedCheckOut || null,
   });
   if (error) throw error;
   return Number(data ?? 0);

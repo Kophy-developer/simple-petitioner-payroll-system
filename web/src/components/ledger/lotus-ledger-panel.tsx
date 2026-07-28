@@ -100,8 +100,7 @@ export function LotusLedgerPanel() {
               {rows.map((row) => (
                 <tr key={row.userId}>
                   <Td>
-                    {row.firstName} {row.lastName}{" "}
-                    <span className="text-ink/45">({row.initials})</span>
+                    {row.firstName} {row.lastName}
                   </Td>
                   <Td align="right">{row.lineCount}</Td>
                   <Td align="right">{formatCurrency(row.totalPay)}</Td>
