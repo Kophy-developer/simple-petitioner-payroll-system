@@ -1224,6 +1224,10 @@ export async function updateUserAdmin(input: {
   hourlyWage?: number | null;
   wageCurrency?: WageCurrency | null;
   status?: UserStatus;
+  employeeId?: string | null;
+  brexUserId?: string | null;
+  isLotus?: boolean | null;
+  subAccountId?: string | null;
 }) {
   const supabase = createClient();
   const { data, error } = await supabase.rpc("update_user_admin", {
@@ -1232,6 +1236,10 @@ export async function updateUserAdmin(input: {
     p_hourly_wage: input.hourlyWage ?? null,
     p_wage_currency: input.wageCurrency ?? null,
     p_status: input.status ?? "active",
+    p_employee_id: input.employeeId === undefined ? null : (input.employeeId ?? ""),
+    p_brex_user_id: input.brexUserId === undefined ? null : (input.brexUserId ?? ""),
+    p_is_lotus: input.isLotus ?? null,
+    p_sub_account_id: input.subAccountId ?? null,
   });
   if (error) throw error;
   return mapProfile(data);

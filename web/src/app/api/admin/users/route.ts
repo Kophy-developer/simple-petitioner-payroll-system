@@ -54,6 +54,12 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json()) as Body;
+  if (body.role === "super_admin" && profile?.role !== "super_admin") {
+    return NextResponse.json(
+      { error: "Only super admin can create a super admin." },
+      { status: 403 },
+    );
+  }
   const password = body.password?.trim() || tempPassword();
   if (!body.email?.trim() || password.length < 8) {
     return NextResponse.json(

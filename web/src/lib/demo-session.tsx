@@ -88,17 +88,21 @@ export function postLoginPath(user: DemoUser) {
 }
 
 async function resolveLoginEmail(identifier: string) {
-  const supabase = createClient();
   const trimmed = identifier.trim();
   if (trimmed.includes("@")) return trimmed.toLowerCase();
-  const { data, error } = await supabase.rpc("lookup_user_for_login", {
-    p_identifier: trimmed,
+  const res = await fetch("/api/auth/resolve-login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier: trimmed }),
   });
-  if (error) throw error;
-  const row = Array.isArray(data) ? data[0] : data;
-  if (!row?.email) throw new Error("No account found for that employee ID.");
-  if (row.status === "offboarded") throw new Error("This account has been offboarded.");
-  return String(row.email).toLowerCase();
+  const payload = (await res.json().catch(() => ({}))) as {
+    email?: string;
+    error?: string;
+  };
+  if (!res.ok || !payload.email) {
+    throw new Error(payload.error || "No account found for that employee ID.");
+  }
+  return String(payload.email).toLowerCase();
 }
 
 async function fetchSessionUser(): Promise<DemoUser | null> {

@@ -98,6 +98,14 @@ export async function POST(request: Request) {
     let initials = (row.initials?.trim() || deriveInitials(firstName, lastName)).toUpperCase();
     const role = normalizeRoleLabel(String(row.role ?? "petitioner")) ?? "petitioner";
 
+    if (role === "super_admin" && profile?.role !== "super_admin") {
+      errors.push({
+        row: i + 1,
+        message: "Only super admin can create a super admin.",
+      });
+      continue;
+    }
+
     if (!firstName || !lastName || !email || !email.includes("@")) {
       errors.push({
         row: i + 1,

@@ -495,10 +495,10 @@ export async function offboardUser(userId: string) {
 
 export async function setUserSubAccount(userId: string, subAccountId: string) {
   const supabase = createClient();
-  const { error } = await supabase
-    .from("profiles")
-    .update({ sub_account_id: subAccountId })
-    .eq("id", userId);
+  const { error } = await supabase.rpc("admin_set_user_sub_account", {
+    p_user_id: userId,
+    p_sub_account_id: subAccountId,
+  });
   if (error) throw error;
 }
 
@@ -1117,6 +1117,9 @@ export async function resolveBrexDispute(id: string, confirm: boolean) {
 
 export async function setUserLotus(userId: string, isLotus: boolean) {
   const supabase = createClient();
-  const { error } = await supabase.from("profiles").update({ is_lotus: isLotus }).eq("id", userId);
+  const { error } = await supabase.rpc("admin_set_user_lotus", {
+    p_user_id: userId,
+    p_is_lotus: isLotus,
+  });
   if (error) throw error;
 }

@@ -9,9 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Card, CardBody } from "@/components/ui/card";
 import { roleLabel } from "@/lib/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { getProfile, updateUserAdmin } from "@/lib/api/live";
-import { listSubAccounts, setUserLotus, setUserSubAccount } from "@/lib/api/remodel";
+import { listSubAccounts } from "@/lib/api/remodel";
 import type { DemoUser, SubAccount, UserRole, UserStatus, WageCurrency } from "@/lib/types";
 
 export default function AdminUserPage({ params }: { params: Promise<{ id: string }> }) {
@@ -63,18 +62,11 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
         status,
         hourlyWage: hourlyWage === "" ? null : parseFloat(hourlyWage),
         wageCurrency: currency,
+        employeeId: employeeId.trim(),
+        brexUserId: brexUserId.trim(),
+        isLotus,
+        subAccountId: subAccountId || null,
       });
-      const supabase = createClient();
-      const { error: empErr } = await supabase
-        .from("profiles")
-        .update({
-          employee_id: employeeId.trim() || null,
-          brex_user_id: brexUserId.trim() || null,
-        })
-        .eq("id", id);
-      if (empErr) throw empErr;
-      await setUserLotus(id, isLotus);
-      if (subAccountId) await setUserSubAccount(id, subAccountId);
       setUser({
         ...updated,
         employeeId: employeeId.trim() || null,

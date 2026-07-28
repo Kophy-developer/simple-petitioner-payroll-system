@@ -74,6 +74,7 @@ const EXCLUDED_EXPENSE_STATUSES = new Set([
   "CANCELLED",
   "VOIDED",
   "DRAFT",
+  "FAILED",
 ]);
 
 const EXCLUDED_PAYMENT_STATUSES = new Set([
@@ -81,6 +82,7 @@ const EXCLUDED_PAYMENT_STATUSES = new Set([
   "CANCELLED",
   "DECLINED",
   "VOIDED",
+  "FAILED",
 ]);
 
 async function requireAdmin() {
@@ -427,6 +429,8 @@ export async function POST() {
       matchConfidence = disputed.match_confidence;
     } else if (!isSuccessfulExpense(expense)) {
       skippedUnsuccessful += 1;
+      await admin.from("brex_transactions").delete().eq("brex_id", expense.id);
+      continue;
     } else {
       const match = resolveMatch({
         expenseUserId,
@@ -448,7 +452,7 @@ export async function POST() {
       else if (matchMethod === "brex_user_id") matchedByBrexId += 1;
       else if (matchMethod === "name_exact") matchedByNameExact += 1;
       else if (matchMethod === "name_similar") matchedByNameSimilar += 1;
-      else if (isSuccessfulExpense(expense)) unmatched += 1;
+      else unmatched += 1;
     }
 
     const amount = moneyToDollars(
