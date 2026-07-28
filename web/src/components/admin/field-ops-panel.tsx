@@ -21,7 +21,7 @@ import {
   returnRentalCar,
 } from "@/lib/api/remodel";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { rentalCarGuideTotal } from "@/lib/roster-import";
+import { rentalCarGuideTotal, rentalCarInclusiveDays } from "@/lib/rental-car-math";
 import type {
   DemoUser,
   HousingShareKind,
@@ -63,7 +63,7 @@ export function FieldOpsPanel() {
   const [oneWayFee, setOneWayFee] = useState("");
 
   const fieldPeople = useMemo(
-    () => people.filter((p) => ["petitioner", "team_lead", "canvasser"].includes(p.role)),
+    () => people.filter((p) => ["petitioner", "team_lead"].includes(p.role)),
     [people],
   );
 
@@ -287,12 +287,7 @@ export function FieldOpsPanel() {
                 </thead>
                 <tbody className="divide-y divide-ink/8 bg-white/50">
                   {cars.map((car) => {
-                    const days = Math.max(
-                      0,
-                      Math.floor(
-                        (Date.now() - new Date(car.pickupAt).getTime()) / (1000 * 60 * 60 * 24),
-                      ),
-                    );
+                    const days = rentalCarInclusiveDays(car.pickupAt);
                     return (
                       <tr key={car.id}>
                         <Td>{names[car.userId] ?? "Unknown"}</Td>

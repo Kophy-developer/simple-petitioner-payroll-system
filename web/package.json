@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:payroll": "tsx --test src/lib/payroll.test.ts src/lib/validity-excel.test.ts src/lib/payroll-math.test.ts src/lib/turn-in-report-excel.test.ts src/lib/turn-in-number.test.ts"
+    "test:payroll": "tsx --test src/lib/payroll.test.ts src/lib/validity-excel.test.ts src/lib/payroll-math.test.ts src/lib/turn-in-report-excel.test.ts src/lib/turn-in-number.test.ts src/lib/rental-car-math.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",

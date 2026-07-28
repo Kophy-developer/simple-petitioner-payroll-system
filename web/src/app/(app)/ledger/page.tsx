@@ -104,7 +104,7 @@ function LedgerContent() {
     setIssues(issueRows);
     const picker = locked
       ? people
-      : people.filter((p) => ["petitioner", "canvasser"].includes(p.role));
+      : people.filter((p) => ["petitioner"].includes(p.role));
     const next = picker.length ? picker : people;
     setProfiles(next);
     return next;
@@ -284,16 +284,6 @@ function LedgerContent() {
                 >
                   Individual
                 </Button>
-                {canLotus ? (
-                  <Button
-                    size="sm"
-                    variant={view === "lotus" ? "primary" : "ghost"}
-                    className={view === "lotus" ? "" : "border-0 bg-transparent"}
-                    onClick={() => setView("lotus")}
-                  >
-                    Lotus Team Ledger
-                  </Button>
-                ) : null}
               </div>
               {view === "individual" ? (
                 <div className="w-56 space-y-2">

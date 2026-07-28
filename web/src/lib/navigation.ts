@@ -8,44 +8,34 @@ export type NavItem = {
   matchPrefix?: boolean;
 };
 
-const allRoles: UserRole[] = [
-  "super_admin",
-  "account_admin",
-  "team_lead",
-  "petitioner",
-  "canvasser",
-  "validator",
-];
-
 export const navItems: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", roles: allRoles, section: "Overview" },
-  { href: "/turn-ins", label: "Turn-ins", roles: ["super_admin", "account_admin", "team_lead", "petitioner", "validator"], section: "Collection", matchPrefix: true },
-  { href: "/issues", label: "Issues & Petitions", roles: ["super_admin", "account_admin", "team_lead", "petitioner", "validator"], section: "Collection" },
+  { href: "/dashboard", label: "Dashboard", roles: ["super_admin", "account_admin", "team_lead", "petitioner"], section: "Overview" },
+  { href: "/turn-ins", label: "Turn-ins", roles: ["super_admin", "account_admin", "team_lead", "petitioner"], section: "Collection", matchPrefix: true },
+  { href: "/issues", label: "Issues & Petitions", roles: ["super_admin", "account_admin", "team_lead", "petitioner"], section: "Collection" },
   { href: "/submissions", label: "Submissions", roles: ["super_admin", "account_admin", "team_lead", "petitioner"], section: "Collection" },
   { href: "/collection", label: "Master Collection", roles: ["super_admin", "account_admin", "team_lead"], section: "Collection" },
-  { href: "/validity", label: "Validity Records", roles: ["super_admin", "account_admin", "validator"], section: "Collection" },
-  { href: "/imports", label: "Imports", roles: ["super_admin", "account_admin", "validator"], section: "Collection", matchPrefix: true },
+  { href: "/validity", label: "Validity Records", roles: ["super_admin", "account_admin"], section: "Collection" },
+  { href: "/imports", label: "Imports", roles: ["super_admin", "account_admin"], section: "Collection", matchPrefix: true },
   { href: "/directory", label: "Employee Directory", roles: ["super_admin", "account_admin"], section: "People" },
   { href: "/ledger", label: "Ledger", roles: ["super_admin", "account_admin", "team_lead", "petitioner"], section: "Payroll", matchPrefix: true },
-  { href: "/payroll", label: "Payroll & Expenses", roles: ["super_admin", "account_admin", "team_lead", "petitioner", "canvasser"], section: "Payroll", matchPrefix: true },
-  { href: "/brex", label: "Brex", roles: ["super_admin", "account_admin", "team_lead", "petitioner", "canvasser"], section: "Payroll" },
-  { href: "/loans", label: "Loans & Advances", roles: ["super_admin", "account_admin", "team_lead", "petitioner", "canvasser"], section: "Payroll", matchPrefix: true },
-  { href: "/colorado-import", label: "CO Validity Drop", roles: ["super_admin", "account_admin", "validator"], section: "Collection" },
+  { href: "/payroll", label: "Payroll & Expenses", roles: ["super_admin", "account_admin", "team_lead", "petitioner"], section: "Payroll", matchPrefix: true },
+  { href: "/brex", label: "Brex", roles: ["super_admin", "account_admin", "team_lead", "petitioner"], section: "Payroll" },
+  { href: "/loans", label: "Loans & Advances", roles: ["super_admin", "account_admin", "team_lead", "petitioner"], section: "Payroll", matchPrefix: true },
+  { href: "/colorado-import", label: "CO Validity Drop", roles: ["super_admin", "account_admin"], section: "Collection" },
   { href: "/admin", label: "Admin Panel", roles: ["super_admin", "account_admin"], section: "Configuration", matchPrefix: true },
 ];
 
 const deepLinkAccess: { href: string; roles: UserRole[]; matchPrefix?: boolean }[] = [
-  { href: "/lotus-ledger", roles: ["super_admin", "account_admin"] },
   {
     href: "/payments",
-    roles: ["super_admin", "account_admin", "team_lead", "petitioner", "canvasser"],
+    roles: ["super_admin", "account_admin", "team_lead", "petitioner"],
     matchPrefix: true,
   },
   { href: "/pay-rates", roles: ["super_admin", "account_admin"] },
-  { href: "/expense-config", roles: ["super_admin", "account_admin"] },
   { href: "/field-ops", roles: ["super_admin", "account_admin"] },
   { href: "/payroll?tab=housing-cars", roles: ["super_admin", "account_admin"] },
-  { href: "/colorado-import", roles: ["super_admin", "account_admin", "validator"] },
+  { href: "/colorado-import", roles: ["super_admin", "account_admin"] },
+  { href: "/validity", roles: ["super_admin", "account_admin"] },
 ];
 
 export function getNavForRole(role: UserRole) {
@@ -96,8 +86,8 @@ export function isNavActive(pathname: string, href: string, matchPrefix?: boolea
   return pathname === href;
 }
 
-export function canAccessLotusLedger(role: UserRole) {
-  return role === "super_admin" || role === "account_admin";
+export function canAccessLotusLedger(_role: UserRole) {
+  return false;
 }
 
 export function canAccessPayments(role: UserRole) {
@@ -105,8 +95,7 @@ export function canAccessPayments(role: UserRole) {
     role === "super_admin" ||
     role === "account_admin" ||
     role === "team_lead" ||
-    role === "petitioner" ||
-    role === "canvasser"
+    role === "petitioner"
   );
 }
 
@@ -114,8 +103,8 @@ export function canAccessPayRates(role: UserRole) {
   return role === "super_admin" || role === "account_admin";
 }
 
-export function canAccessExpenseConfig(role: UserRole) {
-  return role === "super_admin" || role === "account_admin";
+export function canAccessExpenseConfig(_role: UserRole) {
+  return false;
 }
 
 export function canAccessFieldOps(role: UserRole) {

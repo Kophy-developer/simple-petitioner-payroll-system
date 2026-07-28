@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { deriveInitials } from "@/lib/roster-import";
+import { INVITE_ENV_HINT, sendUserInviteEmail } from "@/lib/invite-email";
 import type { UserRole, WageCurrency } from "@/lib/types";
 
 type Body = {
@@ -78,9 +79,10 @@ export async function POST(request: Request) {
   const initials = (
     body.initials?.trim() || deriveInitials(body.firstName, body.lastName)
   ).toUpperCase();
+  const email = body.email.trim().toLowerCase();
 
   const { data, error } = await admin.auth.admin.createUser({
-    email: body.email.trim().toLowerCase(),
+    email,
     password,
     email_confirm: true,
     user_metadata: {
@@ -115,6 +117,9 @@ export async function POST(request: Request) {
     }
   }
 
+  let inviteEmailed = false;
+  let inviteNote = INVITE_ENV_HINT;
+
   if (data.user) {
     await admin
       .from("profiles")
@@ -137,11 +142,35 @@ export async function POST(request: Request) {
     await admin.auth.admin.updateUserById(data.user.id, {
       ban_duration: "876000h",
     });
+
+    const mail = await sendUserInviteEmail(admin, {
+      email,
+      firstName: body.firstName.trim(),
+    });
+    if (mail.emailed) {
+      await admin.auth.admin.updateUserById(data.user.id, { ban_duration: "none" });
+      await admin
+        .from("profiles")
+        .update({
+          invite_sent_at: new Date().toISOString(),
+          status: "active",
+          must_change_password: true,
+        })
+        .eq("id", data.user.id);
+      inviteEmailed = true;
+      inviteNote = `Invite emailed via ${mail.provider}.`;
+    } else {
+      inviteNote = mail.message
+        ? `${mail.message} ${INVITE_ENV_HINT}`
+        : `Invite held — email not sent. ${INVITE_ENV_HINT}`;
+    }
   }
 
   return NextResponse.json({
     id: data.user?.id,
     email: data.user?.email,
     employeeId,
+    inviteEmailed,
+    note: inviteNote,
   });
 }

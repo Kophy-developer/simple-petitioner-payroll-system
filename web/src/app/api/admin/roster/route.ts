@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { deriveInitials, normalizeRoleLabel } from "@/lib/roster-import";
+import { INVITE_ENV_HINT, sendUserInviteEmail } from "@/lib/invite-email";
 import type { UserRole } from "@/lib/types";
 
 type RosterRow = {
@@ -86,8 +87,11 @@ export async function POST(request: Request) {
     role: UserRole;
     phone?: string;
     tempPassword: string;
+    inviteEmailed: boolean;
   }[] = [];
   const errors: { row: number; message: string }[] = [];
+  let invitesEmailed = 0;
+  let invitesHeld = 0;
 
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
@@ -196,6 +200,24 @@ export async function POST(request: Request) {
       ban_duration: "876000h",
     });
 
+    let inviteEmailed = false;
+    const mail = await sendUserInviteEmail(admin, { email, firstName });
+    if (mail.emailed) {
+      await admin.auth.admin.updateUserById(data.user.id, { ban_duration: "none" });
+      await admin
+        .from("profiles")
+        .update({
+          invite_sent_at: new Date().toISOString(),
+          status: "active",
+          must_change_password: true,
+        })
+        .eq("id", data.user.id);
+      inviteEmailed = true;
+      invitesEmailed += 1;
+    } else {
+      invitesHeld += 1;
+    }
+
     created.push({
       employeeId,
       firstName,
@@ -204,8 +226,18 @@ export async function POST(request: Request) {
       role,
       phone: phone ?? undefined,
       tempPassword: password,
+      inviteEmailed,
     });
   }
 
-  return NextResponse.json({ created, errors });
+  return NextResponse.json({
+    created,
+    errors,
+    invitesEmailed,
+    invitesHeld,
+    note:
+      invitesHeld > 0
+        ? `${invitesEmailed} invite(s) emailed; ${invitesHeld} held pending mail config. ${INVITE_ENV_HINT}`
+        : `${invitesEmailed} invite(s) emailed.`,
+  });
 }

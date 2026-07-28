@@ -79,7 +79,7 @@ export default function ValidityPage() {
       setIssues(issueRows);
       setProfiles(people);
       setTurnIns(turnInRows);
-      const pet = people.filter((p) => p.role === "petitioner" || p.role === "canvasser");
+      const pet = people.filter((p) => p.role === "petitioner");
       setPetitioners(pet);
       if (!issueId && issueRows[0]) setIssueId(issueRows[0].id);
       if (!userId && pet[0]) setUserId(pet[0].id);

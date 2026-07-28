@@ -57,7 +57,7 @@ export async function GET(request: Request) {
       subject,
       body,
       sms,
-      emailDelivery: "queued_for_provider",
+      emailDelivery: "not_sent",
     });
   }
 
@@ -65,6 +65,8 @@ export async function GET(request: Request) {
     ok: true,
     openCount: open?.length ?? 0,
     reminders,
-    note: "Wire RESEND_API_KEY or SMTP later for live email; Twilio SMS sends only when TWILIO_* env vars are set.",
+    emailDelivery: "not_sent",
+    smsDelivery: twilioConfigured() ? "attempted_when_phone_present" : "twilio_not_configured",
+    note: "Checkout reminder emails are not sent by this job. Twilio SMS sends only when TWILIO_* env vars are set.",
   });
 }

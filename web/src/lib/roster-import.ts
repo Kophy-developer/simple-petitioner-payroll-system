@@ -135,11 +135,4 @@ export function normalizeRoleLabel(role: string): UserRole | undefined {
   return aliases[raw] ?? aliases[role.trim().toLowerCase()];
 }
 
-export function rentalCarGuideTotal(days: number) {
-  const d = Math.max(0, Math.floor(days));
-  const months = Math.floor(d / 30);
-  let rem = d % 30;
-  const weeks = Math.floor(rem / 7);
-  rem = rem % 7;
-  return Math.round((months * 1146 + weeks * 309 + rem * 50) * 100) / 100;
-}
+export { rentalCarGuideTotal } from "./rental-car-math";

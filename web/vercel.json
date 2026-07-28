@@ -4,5 +4,11 @@
   "installCommand": "npm install",
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
-  "outputDirectory": ".next"
+  "outputDirectory": ".next",
+  "crons": [
+    {
+      "path": "/api/cron/field-ops-accrual",
+      "schedule": "15 6 * * *"
+    }
+  ]
 }

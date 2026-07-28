@@ -27,6 +27,7 @@ import {
   getReceiptSignedUrl,
   listExpenses,
   listProfiles,
+  voidExpense,
   type PayrollBalance,
 } from "@/lib/api/live";
 import {
@@ -66,6 +67,7 @@ function PayrollContent() {
   const showPayments = user ? canAccessPayments(user.role) : false;
   const showBatch = user ? canRunPayroll(user.role) : false;
   const showHousingCars = user ? canRunPayroll(user.role) : false;
+  const [voidingExpense, setVoidingExpense] = useState<string | null>(null);
   const tab: PayrollTab =
     showHousingCars && params.get("tab") === "housing-cars"
       ? "housing-cars"
@@ -379,11 +381,12 @@ function PayrollContent() {
                     <Th>Type</Th>
                     <Th align="right">Amount</Th>
                     <Th>Receipt</Th>
+                    {isAdmin ? <Th /> : null}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink/8 bg-white/50">
                   {expenses.map((e) => (
-                    <tr key={e.id}>
+                    <tr key={e.id} className={e.voided ? "opacity-50" : undefined}>
                       <Td>
                         {e.endDate
                           ? e.endDate === e.date
@@ -391,7 +394,10 @@ function PayrollContent() {
                             : `${formatDate(e.date)} – ${formatDate(e.endDate)}`
                           : formatDate(e.date)}
                       </Td>
-                      <Td>{expenseTypeLabels[e.type]}</Td>
+                      <Td>
+                        {expenseTypeLabels[e.type]}
+                        {e.voided ? " (voided)" : ""}
+                      </Td>
                       <Td align="right">{formatCurrency(e.amount)}</Td>
                       <Td className="text-civic-navy">
                         {e.receiptPath && e.receiptName !== "—" ? (
@@ -415,11 +421,39 @@ function PayrollContent() {
                           "—"
                         )}
                       </Td>
+                      {isAdmin ? (
+                        <Td>
+                          {!e.voided ? (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={voidingExpense === e.id}
+                              onClick={() => {
+                                const reason = window.prompt("Void reason (required)");
+                                if (!reason?.trim()) return;
+                                setVoidingExpense(e.id);
+                                void voidExpense(e.id, reason.trim())
+                                  .then(load)
+                                  .catch((err) =>
+                                    setError(
+                                      err instanceof Error ? err.message : "Could not void expense",
+                                    ),
+                                  )
+                                  .finally(() => setVoidingExpense(null));
+                              }}
+                            >
+                              Void
+                            </Button>
+                          ) : (
+                            <Badge tone="danger">Voided</Badge>
+                          )}
+                        </Td>
+                      ) : null}
                     </tr>
                   ))}
                   {expenses.length === 0 ? (
                     <tr>
-                      <Td colSpan={4}>
+                      <Td colSpan={isAdmin ? 5 : 4}>
                         <p className="py-6 text-center text-sm text-ink/50">No expenses yet.</p>
                       </Td>
                     </tr>

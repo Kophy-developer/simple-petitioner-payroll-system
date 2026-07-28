@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardBody } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { canEditFinancialConfig } from "@/lib/access";
 import { listProfiles } from "@/lib/api/live";
 import {
   listTurnInColumns,
@@ -14,9 +15,12 @@ import {
   upsertTurnInEntry,
   upsertTurnInValidity,
 } from "@/lib/api/remodel";
+import { useDemoSession } from "@/lib/demo-session";
 import type { DemoUser, TurnIn, TurnInColumn, TurnInEntry } from "@/lib/types";
 
 export default function TurnInDetailPage() {
+  const { user: viewer } = useDemoSession();
+  const isAdmin = viewer ? canEditFinancialConfig(viewer.role) : false;
   const params = useParams<{ id: string }>();
   const turnInId = params.id;
   const [turnIn, setTurnIn] = useState<TurnIn | null>(null);
@@ -44,7 +48,7 @@ export default function TurnInDetailPage() {
       setEntries(ents);
       setPeople(
         profiles.filter((p) =>
-          ["petitioner", "canvasser", "team_lead", "validator"].includes(p.role),
+          ["petitioner", "team_lead"].includes(p.role),
         ),
       );
       const next: Record<string, { sigs: string; books: string }> = {};
@@ -118,7 +122,11 @@ export default function TurnInDetailPage() {
       <PageHeader
         eyebrow="Turn-in"
         title={turnIn.turnInNumber}
-        description={`Benchmark ${turnIn.benchmarkPct}% · Enter sigs and books.`}
+        description={
+          isAdmin
+            ? `Benchmark ${turnIn.benchmarkPct}% · Enter sigs and books.`
+            : "Enter sigs and books."
+        }
       />
       {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
       {message ? <p className="rounded-xl bg-success/10 px-4 py-3 text-sm text-success">{message}</p> : null}
@@ -193,9 +201,11 @@ export default function TurnInDetailPage() {
       <Card>
         <CardBody className="space-y-4">
           <h2 className="font-display text-xl text-ink">Manual validity (per column)</h2>
-          <p className="text-sm text-ink/55">
-            Uses Excel rule: pay rate = MIN(validity% / benchmark, 1), payable = ROUNDDOWN(pay rate × usable).
-          </p>
+          {isAdmin ? (
+            <p className="text-sm text-ink/55">
+              Uses Excel rule: pay rate = MIN(validity% / benchmark, 1), payable = ROUNDDOWN(pay rate × usable).
+            </p>
+          ) : null}
           <div className="grid gap-3">
             {people.slice(0, 12).map((person) =>
               columns.slice(0, 1).map((col) => {

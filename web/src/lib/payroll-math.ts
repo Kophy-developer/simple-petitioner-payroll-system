@@ -16,6 +16,11 @@ export function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
 }
 
+export function holdFraction(holdPct = 15) {
+  const pct = Number.isFinite(holdPct) ? holdPct : 15;
+  return Math.min(100, Math.max(0, pct)) / 100;
+}
+
 export function calculateLedgerLine(input: {
   sigs: number;
   pay: number;
@@ -23,6 +28,7 @@ export function calculateLedgerLine(input: {
   valid: number | null;
   benchmarkPct: number;
   hasValidity: boolean;
+  holdPct?: number;
 }) {
   const estimatedPay = roundMoney(input.sigs * input.pay);
   if (!input.hasValidity || input.usable == null || input.valid == null) {
@@ -42,8 +48,9 @@ export function calculateLedgerLine(input: {
   const payRate = payRateFromBenchmark(validityPct, input.benchmarkPct);
   const payable = payableFromUseable(payRate, input.usable);
   const totalPay = roundMoney(payable * input.pay);
-  const upfront = roundMoney(totalPay * 0.85);
-  const hold = roundMoney(totalPay * 0.15);
+  const holdFrac = holdFraction(input.holdPct ?? 15);
+  const upfront = roundMoney(totalPay * (1 - holdFrac));
+  const hold = roundMoney(totalPay * holdFrac);
 
   return {
     estimatedPay,

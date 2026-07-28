@@ -15,6 +15,8 @@ import { demoPassword } from "@/lib/demo-data";
 
 type Mode = "password" | "otp";
 
+const demoEnabled = process.env.NEXT_PUBLIC_ENABLE_DEMO === "true";
+
 export default function LoginPage() {
   const { signIn, requestEmployeeOtp, verifyEmployeeOtp } = useDemoSession();
   const [mode, setMode] = useState<Mode>("password");
@@ -38,8 +40,10 @@ export default function LoginPage() {
     }
     const authError = params.get("error");
     if (authError) setError(authError);
-    setIdentifier(roleDemoUsers[3]?.email ?? "");
-    setPassword(demoPassword);
+    if (demoEnabled) {
+      setIdentifier(roleDemoUsers[3]?.email ?? "");
+      setPassword(demoPassword);
+    }
     setReady(true);
   }, []);
 
@@ -85,10 +89,17 @@ export default function LoginPage() {
           <h1 className="font-display text-5xl tracking-[0.12em] uppercase">Pros</h1>
           <p className="mt-6 max-w-md text-base leading-8 text-parchment/75">Circulator management, validity reconciliation, payroll, field operations, and secure team messaging.</p>
         </div>
-        <div className="rounded-2xl border border-parchment/10 bg-white/5 p-5">
-          <p className="text-xs uppercase tracking-[0.2em] text-parchment/50">Demo password</p>
-          <p className="mt-2 font-mono text-lg text-brass">demo1234</p>
-        </div>
+        {demoEnabled ? (
+          <div className="rounded-2xl border border-parchment/10 bg-white/5 p-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-parchment/50">Demo password</p>
+            <p className="mt-2 font-mono text-lg text-brass">demo1234</p>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-parchment/10 bg-white/5 p-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-parchment/50">Secure access</p>
+            <p className="mt-2 text-sm text-parchment/70">Sign in with your email or employee ID.</p>
+          </div>
+        )}
       </div>
       <Card className="w-full">
         <CardBody className="space-y-6">
@@ -200,29 +211,31 @@ export default function LoginPage() {
             </form>
           )}
 
-          <div className="space-y-3 border-t border-ink/10 pt-5">
-            <p className="text-xs font-medium uppercase tracking-[0.2em] text-ink/45">Quick demo access</p>
-            <div className="grid gap-2">
-              {roleDemoUsers.map((user) => (
-                <button
-                  key={user.id}
-                  type="button"
-                  onClick={() => {
-                    setMode("password");
-                    setIdentifier(user.email);
-                    setPassword(demoPassword);
-                  }}
-                  className="flex items-center justify-between rounded-xl border border-ink/10 bg-parchment/50 px-4 py-3 text-left transition hover:border-brass/40 hover:bg-white"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-ink">{userDisplayName(user)}</p>
-                    <p className="text-xs text-ink/55">{user.email}</p>
-                  </div>
-                  <span className="rounded-full bg-civic-navy/10 px-2.5 py-1 text-[11px] font-medium text-civic-navy">{roleLabel(user.role)}</span>
-                </button>
-              ))}
+          {demoEnabled ? (
+            <div className="space-y-3 border-t border-ink/10 pt-5">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-ink/45">Quick demo access</p>
+              <div className="grid gap-2">
+                {roleDemoUsers.map((user) => (
+                  <button
+                    key={user.id}
+                    type="button"
+                    onClick={() => {
+                      setMode("password");
+                      setIdentifier(user.email);
+                      setPassword(demoPassword);
+                    }}
+                    className="flex items-center justify-between rounded-xl border border-ink/10 bg-parchment/50 px-4 py-3 text-left transition hover:border-brass/40 hover:bg-white"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-ink">{userDisplayName(user)}</p>
+                      <p className="text-xs text-ink/55">{user.email}</p>
+                    </div>
+                    <span className="rounded-full bg-civic-navy/10 px-2.5 py-1 text-[11px] font-medium text-civic-navy">{roleLabel(user.role)}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : null}
         </CardBody>
       </Card>
     </div>

@@ -140,7 +140,7 @@ export default function DashboardPage() {
           </>
         ) : null}
 
-        {canUploadValidity(user.role) && user.role === "validator" ? (
+        {canUploadValidity(user.role) ? (
           <>
             <StatCard label="Validity records" value={String(validityCount)} />
             <StatCard

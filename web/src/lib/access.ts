@@ -17,7 +17,7 @@ export function canApproveLoans(role: UserRole) {
 }
 
 export function isFieldRole(role: UserRole) {
-  return role === "petitioner" || role === "canvasser" || role === "team_lead";
+  return role === "petitioner" || role === "team_lead";
 }
 
 export function canRunPayroll(role: UserRole) {
@@ -29,7 +29,7 @@ export function canRequestLoan(role: UserRole) {
 }
 
 export function canUploadValidity(role: UserRole) {
-  return role === "validator" || role === "super_admin" || role === "account_admin";
+  return role === "super_admin" || role === "account_admin";
 }
 
 export function canEditSubmissions(role: UserRole) {

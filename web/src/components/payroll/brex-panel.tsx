@@ -13,6 +13,7 @@ import {
   markBrexForReimbursement,
   resolveBrexDispute,
   reviewBrexReimbursement,
+  voidBrexReimbursement,
 } from "@/lib/api/remodel";
 import { useDemoSession } from "@/lib/demo-session";
 import { canRunPayroll, isFieldRole } from "@/lib/access";
@@ -22,7 +23,7 @@ import type { BrexTransaction, DemoUser } from "@/lib/types";
 function statusTone(status: BrexTransaction["reimbursementStatus"]) {
   if (status === "approved") return "success";
   if (status === "pending") return "warning";
-  if (status === "rejected" || status === "disputed") return "danger";
+  if (status === "rejected" || status === "disputed" || status === "voided") return "danger";
   return "default";
 }
 
@@ -423,6 +424,26 @@ export function BrexPanel() {
                           {row.reviewedAt ? formatDateTime(row.reviewedAt) : "—"}
                         </div>
                       </div>
+                      {row.reimbursementStatus === "approved" ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="mt-2"
+                          onClick={() => {
+                            const reason = window.prompt("Void reimbursement reason (required)");
+                            if (!reason?.trim()) return;
+                            void voidBrexReimbursement(row.id, reason.trim())
+                              .then(load)
+                              .catch((e) =>
+                                setError(
+                                  e instanceof Error ? e.message : "Could not void reimbursement",
+                                ),
+                              );
+                          }}
+                        >
+                          Void
+                        </Button>
+                      ) : null}
                     </Td>
                   </tr>
                 ))}

@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { INVITE_ENV_HINT, sendUserInviteEmail } from "@/lib/invite-email";
 
 export async function POST() {
   const supabase = await createServerClient();
@@ -47,9 +48,23 @@ export async function POST() {
   const sent: string[] = [];
   const failures: { id: string; message: string }[] = [];
   const now = new Date().toISOString();
+  let emailProvider: string | null = null;
 
   for (const row of pending ?? []) {
     try {
+      const mail = await sendUserInviteEmail(admin, {
+        email: row.email,
+        firstName: row.first_name ?? "",
+      });
+      if (!mail.emailed) {
+        failures.push({
+          id: row.id,
+          message: mail.message || `Invite email not sent. ${INVITE_ENV_HINT}`,
+        });
+        continue;
+      }
+      emailProvider = mail.provider;
+
       await admin.auth.admin.updateUserById(row.id, { ban_duration: "none" });
       const { error: updErr } = await admin
         .from("profiles")
@@ -69,9 +84,22 @@ export async function POST() {
     }
   }
 
+  const noteParts: string[] = [];
+  if (sent.length) {
+    noteParts.push(`Emailed and activated ${sent.length} account(s) via ${emailProvider ?? "mail"}.`);
+  }
+  if (failures.length) {
+    noteParts.push(`${failures.length} invite(s) failed. ${INVITE_ENV_HINT}`);
+  }
+  if (!sent.length && !failures.length) {
+    noteParts.push("No pending invites.");
+  }
+
   return NextResponse.json({
     sent: sent.length,
     failures,
-    note: "Accounts activated for login. Email delivery can be wired after Aug 1.",
+    emailProvider,
+    note: noteParts.join(" "),
+    envHint: INVITE_ENV_HINT,
   });
 }

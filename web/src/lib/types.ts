@@ -114,7 +114,7 @@ export type BrexTransaction = {
   reimbursementRequested: boolean;
   reimbursementRequestedBy: string | null;
   reimbursementRequestedAt: string | null;
-  reimbursementStatus: "none" | "pending" | "approved" | "rejected" | "disputed";
+  reimbursementStatus: "none" | "pending" | "approved" | "rejected" | "disputed" | "voided";
   reviewedBy: string | null;
   reviewedAt: string | null;
 };
@@ -194,6 +194,9 @@ export type Expense = {
   endDate?: string | null;
   receiptName: string;
   receiptPath: string | null;
+  voided?: boolean;
+  voidedAt?: string | null;
+  voidReason?: string | null;
 };
 
 export type LoanRequest = {
@@ -322,6 +325,9 @@ export type PaymentEvent = {
   paidAt: string | null;
   fundsHitAt: string | null;
   loanId: string | null;
+  voided?: boolean;
+  voidedAt?: string | null;
+  voidReason?: string | null;
 };
 
 export type LodgingProperty = {

@@ -14,6 +14,7 @@ import {
   createPaymentEvent,
   listPaymentEvents,
   uploadPaymentReceipt,
+  voidPaymentEvent,
 } from "@/lib/api/remodel";
 import { useDemoSession } from "@/lib/demo-session";
 import { canRunPayroll } from "@/lib/access";
@@ -36,6 +37,7 @@ export function PaymentsPanel({ showRecordAction = true }: { showRecordAction?: 
   const [eventDate, setEventDate] = useState("");
   const [fundsHitAt, setFundsHitAt] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [voidingId, setVoidingId] = useState<string | null>(null);
 
   const isAdmin = user ? canRunPayroll(user.role) : false;
 
@@ -119,6 +121,7 @@ export function PaymentsPanel({ showRecordAction = true }: { showRecordAction?: 
                 <Th align="right">Amount</Th>
                 <Th>Funds hit</Th>
                 <Th>Status</Th>
+                {isAdmin ? <Th /> : null}
               </tr>
             </thead>
             <tbody className="divide-y divide-ink/8 bg-white/50">
@@ -126,7 +129,7 @@ export function PaymentsPanel({ showRecordAction = true }: { showRecordAction?: 
                 const future =
                   row.fundsHitAt && new Date(row.fundsHitAt) > new Date(new Date().toDateString());
                 return (
-                  <tr key={row.id}>
+                  <tr key={row.id} className={row.voided ? "opacity-50" : undefined}>
                     <Td>{formatDate(row.eventDate)}</Td>
                     {isAdmin ? <Td>{names[row.userId] ?? "Unknown"}</Td> : null}
                     <Td>{row.eventType}</Td>
@@ -134,7 +137,9 @@ export function PaymentsPanel({ showRecordAction = true }: { showRecordAction?: 
                     <Td align="right">{formatCurrency(row.amount)}</Td>
                     <Td>{row.fundsHitAt ? formatDate(row.fundsHitAt) : "—"}</Td>
                     <Td>
-                      {future ? (
+                      {row.voided ? (
+                        <Badge tone="danger">Voided</Badge>
+                      ) : future ? (
                         <Badge tone="warning">Paid — on the way</Badge>
                       ) : row.receiptPath ? (
                         <Badge tone="success">Recorded</Badge>
@@ -142,12 +147,36 @@ export function PaymentsPanel({ showRecordAction = true }: { showRecordAction?: 
                         <Badge>Logged</Badge>
                       )}
                     </Td>
+                    {isAdmin ? (
+                      <Td>
+                        {!row.voided ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={voidingId === row.id}
+                            onClick={() => {
+                              const reason = window.prompt("Void reason (required)");
+                              if (!reason?.trim()) return;
+                              setVoidingId(row.id);
+                              void voidPaymentEvent(row.id, reason.trim())
+                                .then(load)
+                                .catch((e) =>
+                                  setError(e instanceof Error ? e.message : "Could not void payment"),
+                                )
+                                .finally(() => setVoidingId(null));
+                            }}
+                          >
+                            Void
+                          </Button>
+                        ) : null}
+                      </Td>
+                    ) : null}
                   </tr>
                 );
               })}
               {rows.length === 0 ? (
                 <tr>
-                  <Td colSpan={isAdmin ? 7 : 6}>
+                  <Td colSpan={isAdmin ? 8 : 6}>
                     <p className="py-6 text-center text-sm text-ink/50">No payments yet.</p>
                   </Td>
                 </tr>

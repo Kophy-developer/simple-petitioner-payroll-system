@@ -60,7 +60,7 @@ export default function DirectoryPage() {
 
   const leads = users.filter((u) => u.role === "team_lead");
   const fieldWorkers = users.filter((u) =>
-    ["petitioner", "validator"].includes(u.role),
+    ["petitioner"].includes(u.role),
   );
   const activeLead = selectedLead || leads[0]?.id || "";
   const savedMembers = memberships
@@ -134,7 +134,11 @@ export default function DirectoryPage() {
           wageCurrency: currency,
         }),
       });
-      const payload = (await res.json()) as { error?: string };
+      const payload = (await res.json()) as {
+        error?: string;
+        inviteEmailed?: boolean;
+        note?: string;
+      };
       if (!res.ok) throw new Error(payload.error || "Could not create user.");
       setOpen(false);
       setEmail("");
@@ -145,7 +149,11 @@ export default function DirectoryPage() {
       setRole("petitioner");
       setHourlyWage("");
       setCurrency("USD");
-      setMessage("User created (invite held until Send all invites).");
+      setMessage(
+        payload.inviteEmailed
+          ? `User created and invite emailed. ${payload.note ?? ""}`
+          : `User created. Invite pending — ${payload.note ?? "use Send all invites after mail is configured."}`,
+      );
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create user.");
@@ -166,7 +174,9 @@ export default function DirectoryPage() {
         note?: string;
       };
       if (!res.ok) throw new Error(payload.error || "Could not send invites.");
-      setMessage(`Activated ${payload.sent ?? 0} account(s). ${payload.note ?? ""}`);
+      setMessage(
+        `Invites: ${payload.sent ?? 0} emailed. ${payload.note ?? ""}`.trim(),
+      );
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not send invites.");
@@ -221,11 +231,6 @@ export default function DirectoryPage() {
                 <tr key={u.id}>
                   <Td>
                     {u.firstName} {u.lastName}
-                    {u.isLotus ? (
-                      <Badge tone="navy" className="ml-2">
-                        Lotus
-                      </Badge>
-                    ) : null}
                   </Td>
                   <Td className="font-mono">{u.employeeId ?? "—"}</Td>
                   <Td>{u.email}</Td>
@@ -391,7 +396,6 @@ export default function DirectoryPage() {
                     "account_admin",
                     "team_lead",
                     "petitioner",
-                    "validator",
                   ] as UserRole[]
                 ).map((r) => (
                   <option key={r} value={r}>

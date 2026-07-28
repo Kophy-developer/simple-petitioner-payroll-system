@@ -111,7 +111,6 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
                       "account_admin",
                       "team_lead",
                       "petitioner",
-                      "validator",
                     ] as UserRole[]
                   ).map((r) => (
                     <option key={r} value={r}>
@@ -153,15 +152,6 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
                 ))}
               </Select>
             </div>
-            <label className="flex items-center gap-2 text-sm text-ink/70">
-              <input
-                type="checkbox"
-                checked={isLotus}
-                onChange={(e) => setIsLotus(e.target.checked)}
-                className="h-4 w-4 accent-brass"
-              />
-              Lotus team member (firm ledger later; no personal batch pay this phase)
-            </label>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Hourly wage</Label>

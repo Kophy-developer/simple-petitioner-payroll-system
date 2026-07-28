@@ -19,15 +19,17 @@ export function calculateLedgerAmounts(input: {
   validityPercent: number | null;
   benchmarkPercent: number;
   payModel: PayModel;
+  holdPct?: number;
 }) {
   const estimatedPay = roundMoney(input.sigs * input.pay);
+  const holdPct = input.holdPct ?? 15;
 
   if (input.payModel === "per_valid_sig") {
     if (input.valid === null) {
       return emptyPayout(estimatedPay);
     }
     const totalPay = roundMoney(input.valid * input.payRate);
-    return finalize(estimatedPay, input.valid, totalPay);
+    return finalize(estimatedPay, input.valid, totalPay, holdPct);
   }
 
   const payable = calculatePayable(
@@ -37,7 +39,7 @@ export function calculateLedgerAmounts(input: {
   );
   if (payable === null) return emptyPayout(estimatedPay);
   const totalPay = roundMoney(input.pay * payable * input.payRate);
-  return finalize(estimatedPay, payable, totalPay);
+  return finalize(estimatedPay, payable, totalPay, holdPct);
 }
 
 function emptyPayout(estimatedPay: number) {
@@ -51,13 +53,19 @@ function emptyPayout(estimatedPay: number) {
   };
 }
 
-function finalize(estimatedPay: number, payable: number, totalPay: number) {
+function finalize(
+  estimatedPay: number,
+  payable: number,
+  totalPay: number,
+  holdPct = 15,
+) {
+  const holdFrac = Math.min(100, Math.max(0, holdPct)) / 100;
   return {
     estimatedPay,
     payable,
     totalPay,
-    upfront: roundMoney(totalPay * 0.85),
-    hold: roundMoney(totalPay * 0.15),
+    upfront: roundMoney(totalPay * (1 - holdFrac)),
+    hold: roundMoney(totalPay * holdFrac),
     validityPending: false,
   };
 }

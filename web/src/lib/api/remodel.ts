@@ -428,7 +428,7 @@ export async function listPaymentEvents(userId?: string) {
   let query = supabase
     .from("payment_events")
     .select(
-      "id, user_id, bucket, event_type, amount, notes, receipt_path, event_date, paid_at, funds_hit_at, loan_id",
+      "id, user_id, bucket, event_type, amount, notes, receipt_path, event_date, paid_at, funds_hit_at, loan_id, voided, voided_at, void_reason",
     )
     .order("event_date", { ascending: false });
   if (userId) query = query.eq("user_id", userId);
@@ -447,8 +447,31 @@ export async function listPaymentEvents(userId?: string) {
       paidAt: row.paid_at,
       fundsHitAt: row.funds_hit_at,
       loanId: row.loan_id,
+      voided: !!row.voided,
+      voidedAt: row.voided_at ?? null,
+      voidReason: row.void_reason ?? null,
     }),
   );
+}
+
+export async function voidPaymentEvent(paymentId: string, reason: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("void_payment_event", {
+    p_payment_id: paymentId,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function voidBrexReimbursement(brexId: string, reason: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("void_brex_reimbursement", {
+    p_brex_id: brexId,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  return data;
 }
 
 export async function createPaymentEvent(input: {

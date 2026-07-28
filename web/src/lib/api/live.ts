@@ -112,6 +112,9 @@ function mapExpense(row: {
   receipt_path: string | null;
   expense_date: string;
   end_date: string | null;
+  voided?: boolean | null;
+  voided_at?: string | null;
+  void_reason?: string | null;
 }): Expense {
   const path = row.receipt_path;
   return {
@@ -124,6 +127,9 @@ function mapExpense(row: {
     endDate: row.end_date,
     receiptPath: path,
     receiptName: path ? path.split("/").pop() || path : "—",
+    voided: !!row.voided,
+    voidedAt: row.voided_at ?? null,
+    voidReason: row.void_reason ?? null,
   };
 }
 
@@ -321,11 +327,23 @@ export async function listExpenses(userId: string) {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("expense_records")
-    .select("id, user_id, issue_id, type, amount, receipt_path, expense_date, end_date")
+    .select(
+      "id, user_id, issue_id, type, amount, receipt_path, expense_date, end_date, voided, voided_at, void_reason",
+    )
     .eq("user_id", userId)
     .order("expense_date", { ascending: false });
   if (error) throw error;
   return (data ?? []).map(mapExpense);
+}
+
+export async function voidExpense(expenseId: string, reason: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("void_expense", {
+    p_expense_id: expenseId,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  return mapExpense(data);
 }
 
 export async function createExpense(input: {
@@ -898,9 +916,26 @@ export async function getBenchmark() {
   return num(data?.value, 75);
 }
 
+export async function getHoldPct() {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("app_config")
+    .select("value")
+    .eq("key", "hold_pct")
+    .maybeSingle();
+  if (error) throw error;
+  return num(data?.value, 15);
+}
+
 export async function setBenchmark(pct: number) {
   const supabase = createClient();
   const { error } = await supabase.rpc("set_benchmark", { p_pct: pct });
+  if (error) throw error;
+}
+
+export async function setHoldPct(pct: number) {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("set_hold_pct", { p_pct: pct });
   if (error) throw error;
 }
 
