@@ -24,6 +24,7 @@ export const navItems: NavItem[] = [
   { href: "/submissions", label: "Submissions", roles: ["super_admin", "account_admin", "team_lead", "petitioner"], section: "Collection" },
   { href: "/collection", label: "Master Collection", roles: ["super_admin", "account_admin", "team_lead"], section: "Collection" },
   { href: "/validity", label: "Validity Records", roles: ["super_admin", "account_admin", "validator"], section: "Collection" },
+  { href: "/imports", label: "Imports", roles: ["super_admin", "account_admin", "validator"], section: "Collection", matchPrefix: true },
   { href: "/directory", label: "Employee Directory", roles: ["super_admin", "account_admin"], section: "People" },
   { href: "/ledger", label: "Ledger", roles: ["super_admin", "account_admin", "team_lead", "petitioner"], section: "Payroll", matchPrefix: true },
   { href: "/payroll", label: "Payroll & Expenses", roles: ["super_admin", "account_admin", "team_lead", "petitioner", "canvasser"], section: "Payroll", matchPrefix: true },
@@ -44,6 +45,7 @@ const deepLinkAccess: { href: string; roles: UserRole[]; matchPrefix?: boolean }
   { href: "/expense-config", roles: ["super_admin", "account_admin"] },
   { href: "/field-ops", roles: ["super_admin", "account_admin"] },
   { href: "/payroll?tab=housing-cars", roles: ["super_admin", "account_admin"] },
+  { href: "/colorado-import", roles: ["super_admin", "account_admin", "validator"] },
 ];
 
 export function getNavForRole(role: UserRole) {

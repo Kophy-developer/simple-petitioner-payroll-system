@@ -21,13 +21,8 @@ import {
   listTeamMemberships,
   setTeamMembers,
 } from "@/lib/api/live";
-import {
-  downloadCredentialsWorkbook,
-  downloadRosterTemplate,
-  parseRosterWorkbook,
-  sortDirectoryUsers,
-  type CredentialExportRow,
-} from "@/lib/roster-import";
+import { sortDirectoryUsers } from "@/lib/roster-import";
+import { RosterImportPanel } from "@/components/imports/roster-import-panel";
 import type { DemoUser, UserRole, WageCurrency } from "@/lib/types";
 import { ledgerIndividualHref } from "@/lib/ledger-person";
 
@@ -58,13 +53,6 @@ export default function DirectoryPage() {
   const [draft, setDraft] = useState<{ lead: string; ids: string[] } | null>(null);
   const [savingTeam, setSavingTeam] = useState(false);
   const [teamMessage, setTeamMessage] = useState("");
-  const [rosterPreview, setRosterPreview] = useState<
-    { firstName: string; lastName: string; email: string; role?: string; phone?: string }[]
-  >([]);
-  const [rosterFileName, setRosterFileName] = useState("");
-  const [importingRoster, setImportingRoster] = useState(false);
-  const [credentials, setCredentials] = useState<CredentialExportRow[]>([]);
-  const [rosterMessage, setRosterMessage] = useState("");
   const [sendingInvites, setSendingInvites] = useState(false);
 
   const sortedUsers = useMemo(() => sortDirectoryUsers(users), [users]);
@@ -163,64 +151,6 @@ export default function DirectoryPage() {
       setError(err instanceof Error ? err.message : "Could not create user.");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function onRosterFile(file: File | null) {
-    setRosterMessage("");
-    setCredentials([]);
-    setRosterPreview([]);
-    setRosterFileName(file?.name ?? "");
-    if (!file) return;
-    try {
-      const buffer = await file.arrayBuffer();
-      setRosterPreview(parseRosterWorkbook(buffer));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not parse employee file.");
-    }
-  }
-
-  async function importRoster() {
-    if (!rosterPreview.length) return;
-    setImportingRoster(true);
-    setError("");
-    setRosterMessage("");
-    try {
-      const res = await fetch("/api/admin/roster", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rows: rosterPreview.map((row) => ({
-            firstName: row.firstName,
-            lastName: row.lastName,
-            email: row.email,
-            phone: row.phone,
-            role: (row.role as UserRole | undefined) || "petitioner",
-          })),
-        }),
-      });
-      const payload = (await res.json()) as {
-        error?: string;
-        created?: CredentialExportRow[];
-        errors?: { row: number; message: string }[];
-      };
-      if (!res.ok) throw new Error(payload.error || "Could not import employees.");
-      const created = payload.created ?? [];
-      setCredentials(created);
-      setRosterMessage(
-        `Created ${created.length} account(s)${
-          payload.errors?.length ? ` · ${payload.errors.length} row error(s)` : ""
-        }. Invites are held until you click Send all invites.`,
-      );
-      if (payload.errors?.length) {
-        setError(payload.errors.map((e) => `Row ${e.row}: ${e.message}`).join(" · "));
-      }
-      setRosterPreview([]);
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not import employees.");
-    } finally {
-      setImportingRoster(false);
     }
   }
 
@@ -350,58 +280,7 @@ export default function DirectoryPage() {
 
       {canManagePeople ? (
         <>
-          <Card>
-            <CardBody className="space-y-5">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Import employees</p>
-                <h3 className="font-display text-xl text-ink">Upload roster</h3>
-                <p className="mt-1 text-sm text-ink/55">
-                  Columns: First, Last, Email, Role, Phone (optional). Accounts stay disabled until
-                  invites are sent.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Button variant="ghost" onClick={() => downloadRosterTemplate()}>
-                  Download template
-                </Button>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="roster-file">Employee workbook</Label>
-                <Input
-                  id="roster-file"
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={(e) => void onRosterFile(e.target.files?.[0] ?? null)}
-                />
-                {rosterFileName ? <p className="text-xs text-ink/55">{rosterFileName}</p> : null}
-              </div>
-              {rosterPreview.length ? (
-                <p className="text-sm text-ink/70">{rosterPreview.length} row(s) ready to import.</p>
-              ) : null}
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  onClick={() => void importRoster()}
-                  disabled={importingRoster || rosterPreview.length === 0}
-                >
-                  {importingRoster ? "Creating accounts…" : "Create accounts"}
-                </Button>
-                {credentials.length ? (
-                  <Button
-                    variant="ghost"
-                    onClick={() =>
-                      downloadCredentialsWorkbook(
-                        credentials,
-                        `bap-credentials-${new Date().toISOString().slice(0, 10)}.xlsx`,
-                      )
-                    }
-                  >
-                    Download credentials Excel
-                  </Button>
-                ) : null}
-                {rosterMessage ? <span className="text-sm text-success">{rosterMessage}</span> : null}
-              </div>
-            </CardBody>
-          </Card>
+          <RosterImportPanel onImported={() => void load()} />
 
           <Card>
             <CardBody className="space-y-5">
