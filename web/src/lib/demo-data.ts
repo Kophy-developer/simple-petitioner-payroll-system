@@ -69,11 +69,11 @@ export const validityRecords: ValidityRecord[] = [
 ];
 
 export const expenses: Expense[] = [
-  { id: "e-1", userId: "u-pet-1", issueId: "i-1", type: "hotel_travel", amount: 124.5, date: "2026-05-10", endDate: "2026-05-12", receiptName: "marriott-co.pdf" },
-  { id: "e-2", userId: "u-pet-1", issueId: null, type: "upfront_draw", amount: 85, date: "2026-05-16", receiptName: "fuel.jpg" },
-  { id: "e-3", userId: "u-pet-1", issueId: "i-1", type: "chargeback", amount: 42, date: "2026-05-22", receiptName: "supplies.pdf" },
-  { id: "e-4", userId: "u-pet-2", issueId: null, type: "car_rental", amount: 180, date: "2026-06-01", endDate: "2026-06-04", receiptName: "hertz.pdf" },
-  { id: "e-5", userId: "u-canv", issueId: null, type: "housing", amount: 95, date: "2026-06-05", endDate: "2026-06-05", receiptName: "rent.jpg" },
+  { id: "e-1", userId: "u-pet-1", issueId: "i-1", type: "hotel_travel", amount: 124.5, date: "2026-05-10", endDate: "2026-05-12", receiptName: "marriott-co.pdf", receiptPath: "demo/marriott-co.pdf" },
+  { id: "e-2", userId: "u-pet-1", issueId: null, type: "upfront_draw", amount: 85, date: "2026-05-16", receiptName: "fuel.jpg", receiptPath: "demo/fuel.jpg" },
+  { id: "e-3", userId: "u-pet-1", issueId: "i-1", type: "chargeback", amount: 42, date: "2026-05-22", receiptName: "supplies.pdf", receiptPath: "demo/supplies.pdf" },
+  { id: "e-4", userId: "u-pet-2", issueId: null, type: "car_rental", amount: 180, date: "2026-06-01", endDate: "2026-06-04", receiptName: "hertz.pdf", receiptPath: "demo/hertz.pdf" },
+  { id: "e-5", userId: "u-canv", issueId: null, type: "housing", amount: 95, date: "2026-06-05", endDate: "2026-06-05", receiptName: "rent.jpg", receiptPath: "demo/rent.jpg" },
 ];
 
 export const loanRequests: LoanRequest[] = [

@@ -71,6 +71,7 @@ export default function TurnInsPage() {
     setLoading(true);
     setError("");
     try {
+      await exposeAllTurnInsToSubmissions();
       const [turnIns, priced] = await Promise.all([listTurnIns(), listPricedPetitionLines()]);
       setRows(turnIns);
       setLines(priced);
@@ -262,31 +263,6 @@ export default function TurnInsPage() {
         description="Create, import, and open turn-in grids."
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => {
-                void (async () => {
-                  setSaving(true);
-                  setError("");
-                  try {
-                    const result = await exposeAllTurnInsToSubmissions();
-                    setUploadMessage(
-                      `Linked ${result.linked} turn-in(s) into Signature Submission for petitioners.`,
-                    );
-                  } catch (e) {
-                    setError(
-                      e instanceof Error
-                        ? e.message
-                        : "Could not expose turn-ins to submissions.",
-                    );
-                  } finally {
-                    setSaving(false);
-                  }
-                })();
-              }}
-            >
-              Show in submissions
-            </Button>
             <Button variant="ghost" onClick={() => setUploadOpen(true)}>
               Upload report
             </Button>

@@ -26,6 +26,11 @@ import {
   type LedgerOverviewRow,
 } from "@/lib/api/live";
 import { listLedgerLines, listTurnIns } from "@/lib/api/remodel";
+import {
+  ledgerIndividualHref,
+  personKeyFromProfile,
+  resolvePersonKey,
+} from "@/lib/ledger-person";
 import type { DemoUser, Issue, LedgerLine, LedgerRow, TurnIn } from "@/lib/types";
 
 const PAGE_SIZE = 50;
@@ -42,7 +47,7 @@ function LedgerContent() {
   const params = useSearchParams();
 
   const queryView = params.get("view");
-  const queryUser = params.get("user");
+  const queryPerson = params.get("person") ?? params.get("user");
   const queryQ = params.get("q") ?? "";
   const queryIssue = params.get("issue") ?? "";
   const queryPending = params.get("pending") === "1";
@@ -56,7 +61,7 @@ function LedgerContent() {
       ? "lotus"
       : queryView === "all"
         ? "all"
-        : queryView === "individual" || (!!queryUser && queryView !== "all" && queryView !== "lotus")
+        : queryView === "individual" || (!!queryPerson && queryView !== "all" && queryView !== "lotus")
           ? "individual"
           : "all";
 
@@ -135,13 +140,26 @@ function LedgerContent() {
     try {
       const picker = await loadMeta();
       const locked = isFieldRole(user.role);
-      const target = locked
-        ? authUserId(user)
-        : queryUser && picker.some((p) => p.id === queryUser)
-          ? queryUser
-          : picker[0]?.id ?? authUserId(user);
+      const resolved = locked
+        ? user
+        : resolvePersonKey(queryPerson, picker) ?? picker[0] ?? user;
+      const target = authUserId(resolved);
 
       setSelectedId(target);
+
+      const pretty = personKeyFromProfile(resolved, picker);
+      const currentPerson = params.get("person");
+      const hasLegacyUser = !!params.get("user");
+      if (
+        multiUser &&
+        (hasLegacyUser || currentPerson !== pretty || params.get("view") !== "individual")
+      ) {
+        const next = new URLSearchParams();
+        next.set("view", "individual");
+        next.set("person", pretty);
+        router.replace(`/ledger?${next.toString()}`);
+      }
+
       const [legacyRows, lines, turnInRows] = await Promise.all([
         listLedger(target),
         listLedgerLines(target),
@@ -157,7 +175,7 @@ function LedgerContent() {
     } finally {
       setLoading(false);
     }
-  }, [user, view, queryUser, loadMeta]);
+  }, [user, view, queryPerson, loadMeta, multiUser, params, router]);
 
   useEffect(() => {
     if (!user) return;
@@ -173,12 +191,21 @@ function LedgerContent() {
   if (!user) return null;
 
   function setView(next: LedgerView, userId?: string) {
+    if (next === "individual") {
+      const id = userId || selectedId;
+      const person = profiles.find((p) => p.id === id);
+      if (person) {
+        router.push(ledgerIndividualHref(person, profiles));
+        return;
+      }
+      if (id) {
+        router.push(`/ledger?view=individual&person=${encodeURIComponent(id)}`);
+        return;
+      }
+    }
     const nextParams = new URLSearchParams();
     nextParams.set("view", next);
-    if (next === "individual") {
-      const id = userId || selectedId || queryUser;
-      if (id) nextParams.set("user", id);
-    } else if (next === "all") {
+    if (next === "all") {
       if (queryQ) nextParams.set("q", queryQ);
       if (queryIssue) nextParams.set("issue", queryIssue);
       if (queryPending) nextParams.set("pending", "1");

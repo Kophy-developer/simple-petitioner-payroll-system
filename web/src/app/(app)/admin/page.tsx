@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { PayRatesPanel } from "@/components/admin/pay-rates-panel";
 import { ExpenseConfigPanel } from "@/components/admin/expense-config-panel";
-import { FieldOpsPanel } from "@/components/admin/field-ops-panel";
 import { getBenchmark } from "@/lib/api/live";
 import { useDemoSession } from "@/lib/demo-session";
 import {
@@ -17,7 +16,7 @@ import {
   canAccessPayRates,
 } from "@/lib/navigation";
 
-type AdminTab = "overview" | "pay-rates" | "expense-config" | "field-ops";
+type AdminTab = "overview" | "pay-rates" | "expense-config";
 
 function AdminContent() {
   const { user } = useDemoSession();
@@ -31,15 +30,19 @@ function AdminContent() {
   const canExpense = user ? canAccessExpenseConfig(user.role) : false;
   const canField = user ? canAccessFieldOps(user.role) : false;
 
+  useEffect(() => {
+    if (params.get("tab") === "field-ops") {
+      router.replace("/payroll?tab=housing-cars");
+    }
+  }, [params, router]);
+
   const requested = params.get("tab");
   const tab: AdminTab =
     requested === "pay-rates" && canPayRates
       ? "pay-rates"
       : requested === "expense-config" && canExpense
         ? "expense-config"
-        : requested === "field-ops" && canField
-          ? "field-ops"
-          : "overview";
+        : "overview";
 
   useEffect(() => {
     if (tab !== "overview") {
@@ -66,18 +69,14 @@ function AdminContent() {
       ? "Pay Rates"
       : tab === "expense-config"
         ? "Car & Housing"
-        : tab === "field-ops"
-          ? "Field Operations"
-          : "Admin Panel";
+        : "Admin Panel";
 
   const description =
     tab === "pay-rates"
       ? "Set pay rates and benchmark."
       : tab === "expense-config"
         ? "Set car and housing rates."
-        : tab === "field-ops"
-          ? "View active cars and lodging."
-          : "System settings and shortcuts.";
+        : "System settings and shortcuts.";
 
   return (
     <div className="space-y-8">
@@ -115,16 +114,6 @@ function AdminContent() {
                 Car & Housing
               </Button>
             ) : null}
-            {canField ? (
-              <Button
-                size="sm"
-                variant={tab === "field-ops" ? "primary" : "ghost"}
-                className={tab === "field-ops" ? "" : "border-0 bg-transparent"}
-                onClick={() => setTab("field-ops")}
-              >
-                Field Operations
-              </Button>
-            ) : null}
           </div>
         }
       />
@@ -133,8 +122,6 @@ function AdminContent() {
         <PayRatesPanel />
       ) : tab === "expense-config" ? (
         <ExpenseConfigPanel />
-      ) : tab === "field-ops" ? (
-        <FieldOpsPanel />
       ) : (
         <>
           {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
@@ -192,14 +179,13 @@ function AdminContent() {
                 ) : null}
                 {canField ? (
                   <li>
-                    <button
-                      type="button"
-                      onClick={() => setTab("field-ops")}
+                    <Link
+                      href="/payroll?tab=housing-cars"
                       className="font-medium text-civic-navy hover:underline"
                     >
-                      Field Operations
-                    </button>
-                    <span className="text-ink/55"> — offices and field settings</span>
+                      Housing &amp; cars
+                    </Link>
+                    <span className="text-ink/55"> — assign stays and rentals</span>
                   </li>
                 ) : null}
               </ul>

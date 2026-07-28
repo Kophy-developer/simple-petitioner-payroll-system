@@ -196,9 +196,6 @@ export function FieldOpsPanel() {
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-ink/65">
-        Assign housing and rental cars here. Generic Add Expense is Flights / Gas / Other only.
-      </p>
       {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
       {message ? <p className="rounded-xl bg-success/10 px-4 py-3 text-sm text-success">{message}</p> : null}
 

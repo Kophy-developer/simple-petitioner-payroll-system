@@ -11,6 +11,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { DataTable, Td, Th } from "@/components/ui/data-table";
 import { getProfile, listIssues, listSubmissions } from "@/lib/api/live";
 import type { DemoUser, Issue, Submission } from "@/lib/types";
+import { ledgerIndividualHref } from "@/lib/ledger-person";
 
 export default function CollectionPage() {
   const [issues, setIssues] = useState<Issue[]>([]);
@@ -114,7 +115,14 @@ export default function CollectionPage() {
                 return (
                   <tr key={row.id}>
                     <Td>
-                      <Link href={`/ledger?view=individual&user=${row.userId}`} className="font-medium text-civic-navy hover:underline">
+                      <Link
+                        href={
+                          u
+                            ? ledgerIndividualHref(u, Object.values(people))
+                            : `/ledger?view=individual&person=${row.userId}`
+                        }
+                        className="font-medium text-civic-navy hover:underline"
+                      >
                         {u?.firstName} {u?.lastName}{" "}
                         <span className="text-ink/45">({u?.initials ?? "—"})</span>
                       </Link>

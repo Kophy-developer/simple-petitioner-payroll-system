@@ -287,10 +287,10 @@ export default function ValidityPage() {
           Manual entry
         </Button>
         <Button variant={tab === "upload" ? "primary" : "ghost"} size="sm" onClick={() => setTab("upload")}>
-          Legacy issue upload
+          Upload Validity
         </Button>
         <Button variant={tab === "turnin" ? "primary" : "ghost"} size="sm" onClick={() => setTab("turnin")}>
-          Turn-in import (CO / MI)
+          Turn-in import
         </Button>
       </div>
 
@@ -412,8 +412,8 @@ export default function ValidityPage() {
                   value={importShape}
                   onChange={(e) => setImportShape(e.target.value as "co" | "mi")}
                 >
-                  <option value="co">CO batch report</option>
-                  <option value="mi">MI Final Validity</option>
+                  <option value="co">Batch report</option>
+                  <option value="mi">Final Validity</option>
                 </Select>
               </div>
               <div className="space-y-2">
@@ -438,7 +438,7 @@ export default function ValidityPage() {
               </div>
               <label className="flex cursor-pointer flex-col items-center rounded-2xl border-2 border-dashed border-ink/15 py-10 transition hover:border-brass/40">
                 <Upload className="text-ink/45" />
-                <p className="mt-2 text-sm font-medium">Drop CO or MI workbook</p>
+                <p className="mt-2 text-sm font-medium">Drop workbook</p>
                 <input
                   type="file"
                   className="hidden"
@@ -483,7 +483,7 @@ export default function ValidityPage() {
                     <tr>
                       <Td colSpan={4}>
                         <p className="py-8 text-center text-sm text-ink/50">
-                          Choose a CO batch or MI Final Validity workbook.
+                          Choose a batch report or Final Validity workbook.
                         </p>
                       </Td>
                     </tr>

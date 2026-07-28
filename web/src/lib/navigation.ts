@@ -43,6 +43,7 @@ const deepLinkAccess: { href: string; roles: UserRole[]; matchPrefix?: boolean }
   { href: "/pay-rates", roles: ["super_admin", "account_admin"] },
   { href: "/expense-config", roles: ["super_admin", "account_admin"] },
   { href: "/field-ops", roles: ["super_admin", "account_admin"] },
+  { href: "/payroll?tab=housing-cars", roles: ["super_admin", "account_admin"] },
 ];
 
 export function getNavForRole(role: UserRole) {

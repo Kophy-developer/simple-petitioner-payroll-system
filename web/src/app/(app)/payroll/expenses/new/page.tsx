@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/select";
 import { Card, CardBody } from "@/components/ui/card";
 import { expenseFormTypes, expenseTypeLabels } from "@/lib/demo-data";
 import { createExpense, listIssues, uploadReceipt } from "@/lib/api/live";
+import { useDemoSession } from "@/lib/demo-session";
 import type { ExpenseType, Issue } from "@/lib/types";
 
 function todayIso() {
@@ -17,6 +18,7 @@ function todayIso() {
 }
 
 export default function NewExpensePage() {
+  const { user } = useDemoSession();
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [type, setType] = useState<ExpenseType>("flight");
@@ -44,7 +46,14 @@ export default function NewExpensePage() {
     try {
       let receiptPath: string | null = null;
       if (receiptFile) {
-        receiptPath = await uploadReceipt(receiptFile);
+        const displayName = user
+          ? `${user.firstName} ${user.lastName}`
+          : "receipt";
+        receiptPath = await uploadReceipt(receiptFile, {
+          displayName,
+          expenseType: type,
+          expenseDate: startDate,
+        });
       }
       await createExpense({
         type,
@@ -98,7 +107,7 @@ export default function NewExpensePage() {
       <PageHeader
         eyebrow="Payroll"
         title="Add expense"
-        description="Flights, gas, and other only. Housing and rental cars are assigned in Field Ops."
+        description="Flights, gas, and other."
         actions={
           <Link href="/payroll" className="text-sm text-civic-navy hover:underline">
             Back

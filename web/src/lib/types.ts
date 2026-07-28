@@ -112,7 +112,11 @@ export type BrexTransaction = {
   disputedAt: string | null;
   disputeNote: string | null;
   reimbursementRequested: boolean;
+  reimbursementRequestedBy: string | null;
+  reimbursementRequestedAt: string | null;
   reimbursementStatus: "none" | "pending" | "approved" | "rejected" | "disputed";
+  reviewedBy: string | null;
+  reviewedAt: string | null;
 };
 
 export type Petition = {
@@ -189,6 +193,7 @@ export type Expense = {
   date: string;
   endDate?: string | null;
   receiptName: string;
+  receiptPath: string | null;
 };
 
 export type LoanRequest = {

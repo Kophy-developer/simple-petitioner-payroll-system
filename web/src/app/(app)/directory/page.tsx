@@ -29,6 +29,7 @@ import {
   type CredentialExportRow,
 } from "@/lib/roster-import";
 import type { DemoUser, UserRole, WageCurrency } from "@/lib/types";
+import { ledgerIndividualHref } from "@/lib/ledger-person";
 
 export default function DirectoryPage() {
   const { user: viewer } = useDemoSession();
@@ -324,7 +325,7 @@ export default function DirectoryPage() {
                   <Td>{u.hourlyWage ? formatCurrency(u.hourlyWage) : "—"}</Td>
                   <Td>
                     <Link
-                      href={`/ledger?view=individual&user=${u.id}`}
+                      href={ledgerIndividualHref(u, users)}
                       className="font-medium text-civic-navy hover:underline"
                     >
                       View

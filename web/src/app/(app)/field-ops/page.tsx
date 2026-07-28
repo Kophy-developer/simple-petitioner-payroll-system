@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function FieldOpsPage() {
-  redirect("/admin?tab=field-ops");
+  redirect("/payroll?tab=housing-cars");
 }

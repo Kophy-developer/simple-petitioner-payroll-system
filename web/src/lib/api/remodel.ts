@@ -244,7 +244,8 @@ export async function exposeAllTurnInsToSubmissions() {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("turn_ins")
-    .select("id, turn_in_number, name, state, turn_in_date, legacy_issue_id");
+    .select("id, turn_in_number, name, state, turn_in_date, legacy_issue_id")
+    .is("legacy_issue_id", null);
   if (error) throw error;
 
   let linked = 0;
@@ -1045,7 +1046,7 @@ export async function listBrexTransactions() {
   const { data, error } = await supabase
     .from("brex_transactions")
     .select(
-      "id, brex_id, cardholder_name, amount, occurred_at, merchant_name, description, memo, expense_status, payment_status, brex_user_email, match_method, match_confidence, matched_user_id, disputed_at, dispute_note, reimbursement_requested, reimbursement_status",
+      "id, brex_id, cardholder_name, amount, occurred_at, merchant_name, description, memo, expense_status, payment_status, brex_user_email, match_method, match_confidence, matched_user_id, disputed_at, dispute_note, reimbursement_requested, reimbursement_requested_by, reimbursement_requested_at, reimbursement_status, reviewed_by, reviewed_at",
     )
     .order("occurred_at", { ascending: false });
   if (error) throw error;
@@ -1068,7 +1069,11 @@ export async function listBrexTransactions() {
       disputedAt: row.disputed_at,
       disputeNote: row.dispute_note,
       reimbursementRequested: !!row.reimbursement_requested,
+      reimbursementRequestedBy: row.reimbursement_requested_by,
+      reimbursementRequestedAt: row.reimbursement_requested_at,
       reimbursementStatus: row.reimbursement_status as BrexTransaction["reimbursementStatus"],
+      reviewedBy: row.reviewed_by,
+      reviewedAt: row.reviewed_at,
     }),
   );
 }

@@ -15,6 +15,7 @@ import { DataTable, Td, Th } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { PaymentsPanel } from "@/components/payroll/payments-panel";
 import { PayrollBatchPanel } from "@/components/payroll/payroll-batch-panel";
+import { FieldOpsPanel } from "@/components/admin/field-ops-panel";
 import { expenseTypeLabels } from "@/lib/demo-data";
 import { useDemoSession } from "@/lib/demo-session";
 import { canRunPayroll, isFieldRole } from "@/lib/access";
@@ -23,6 +24,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import {
   authUserId,
   getExpenseBalance,
+  getReceiptSignedUrl,
   listExpenses,
   listProfiles,
   type PayrollBalance,
@@ -43,7 +45,7 @@ const emptyBalance: PayrollBalance = {
   liveBalance: 0,
 };
 
-type PayrollTab = "expenses" | "payments" | "batch";
+type PayrollTab = "expenses" | "payments" | "batch" | "housing-cars";
 
 function PayrollContent() {
   const { user } = useDemoSession();
@@ -63,15 +65,18 @@ function PayrollContent() {
   const lockedToSelf = user ? isFieldRole(user.role) : false;
   const showPayments = user ? canAccessPayments(user.role) : false;
   const showBatch = user ? canRunPayroll(user.role) : false;
+  const showHousingCars = user ? canRunPayroll(user.role) : false;
   const tab: PayrollTab =
-    showBatch && params.get("tab") === "batch"
-      ? "batch"
-      : showPayments && params.get("tab") === "payments"
-        ? "payments"
-        : "expenses";
+    showHousingCars && params.get("tab") === "housing-cars"
+      ? "housing-cars"
+      : showBatch && params.get("tab") === "batch"
+        ? "batch"
+        : showPayments && params.get("tab") === "payments"
+          ? "payments"
+          : "expenses";
 
   const load = useCallback(async () => {
-    if (!user || tab === "payments" || tab === "batch") return;
+    if (!user || tab === "payments" || tab === "batch" || tab === "housing-cars") return;
     setLoading(true);
     setError("");
     try {
@@ -116,10 +121,10 @@ function PayrollContent() {
   if (!user) return null;
 
   function setTab(next: PayrollTab) {
-    const nextParams = new URLSearchParams(params.toString());
+    const nextParams = new URLSearchParams();
     if (next === "payments") nextParams.set("tab", "payments");
     else if (next === "batch") nextParams.set("tab", "batch");
-    else nextParams.delete("tab");
+    else if (next === "housing-cars") nextParams.set("tab", "housing-cars");
     const qs = nextParams.toString();
     router.push(qs ? `/payroll?${qs}` : "/payroll");
   }
@@ -154,11 +159,13 @@ function PayrollContent() {
               ? canRunPayroll(user.role)
                 ? "Record payments and advances."
                 : "View your payment history."
-              : "View balance and expenses."
+              : tab === "housing-cars"
+                ? "Assign housing and rental cars."
+                : "View balance and expenses."
         }
         actions={
           <div className="flex flex-wrap items-end gap-3">
-            {showPayments || showBatch ? (
+            {showPayments || showBatch || showHousingCars ? (
               <div className="flex rounded-full border border-ink/15 bg-white/70 p-1">
                 <Button
                   size="sm"
@@ -168,6 +175,16 @@ function PayrollContent() {
                 >
                   Expenses
                 </Button>
+                {showHousingCars ? (
+                  <Button
+                    size="sm"
+                    variant={tab === "housing-cars" ? "primary" : "ghost"}
+                    className={tab === "housing-cars" ? "" : "border-0 bg-transparent"}
+                    onClick={() => setTab("housing-cars")}
+                  >
+                    Housing & cars
+                  </Button>
+                ) : null}
                 {showPayments ? (
                   <Button
                     size="sm"
@@ -213,7 +230,9 @@ function PayrollContent() {
         }
       />
 
-      {tab === "batch" ? (
+      {tab === "housing-cars" ? (
+        <FieldOpsPanel />
+      ) : tab === "batch" ? (
         <PayrollBatchPanel />
       ) : tab === "payments" ? (
         <PaymentsPanel />
@@ -374,7 +393,28 @@ function PayrollContent() {
                       </Td>
                       <Td>{expenseTypeLabels[e.type]}</Td>
                       <Td align="right">{formatCurrency(e.amount)}</Td>
-                      <Td className="text-civic-navy">{e.receiptName}</Td>
+                      <Td className="text-civic-navy">
+                        {e.receiptPath && e.receiptName !== "—" ? (
+                          <button
+                            type="button"
+                            className="text-left font-medium text-civic-navy hover:underline"
+                            onClick={() => {
+                              void (async () => {
+                                try {
+                                  const url = await getReceiptSignedUrl(e.receiptPath!);
+                                  window.open(url, "_blank", "noopener,noreferrer");
+                                } catch {
+                                  setError("Could not open receipt.");
+                                }
+                              })();
+                            }}
+                          >
+                            View receipt
+                          </button>
+                        ) : (
+                          "—"
+                        )}
+                      </Td>
                     </tr>
                   ))}
                   {expenses.length === 0 ? (

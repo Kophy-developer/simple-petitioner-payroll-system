@@ -113,6 +113,7 @@ function mapExpense(row: {
   expense_date: string;
   end_date: string | null;
 }): Expense {
+  const path = row.receipt_path;
   return {
     id: row.id,
     userId: row.user_id,
@@ -121,7 +122,8 @@ function mapExpense(row: {
     amount: num(row.amount),
     date: row.expense_date,
     endDate: row.end_date,
-    receiptName: row.receipt_path ?? "—",
+    receiptPath: path,
+    receiptName: path ? path.split("/").pop() || path : "—",
   };
 }
 
@@ -802,20 +804,54 @@ export async function uploadValidityFile(issueId: string, file: File) {
   return path;
 }
 
-export async function uploadReceipt(file: File) {
+export async function uploadReceipt(
+  file: File,
+  opts?: {
+    displayName?: string;
+    expenseType?: string;
+    expenseDate?: string;
+  },
+) {
   const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
-  const ext = file.name.split(".").pop() || "bin";
-  const path = `${user.id}/${Date.now()}.${ext}`;
-  const { error } = await supabase.storage.from("receipts").upload(path, file, {
-    upsert: false,
-    contentType: file.type || undefined,
-  });
+  const ext = (file.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
+  const person = (opts?.displayName || "receipt")
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "receipt";
+  const kind = (opts?.expenseType || "expense")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "expense";
+  const date = (opts?.expenseDate || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const base = `${person}-${kind}-${date}`;
+  let path = `${user.id}/${base}.${ext}`;
+  let attempt = 0;
+  while (attempt < 5) {
+    const { error } = await supabase.storage.from("receipts").upload(path, file, {
+      upsert: false,
+      contentType: file.type || undefined,
+    });
+    if (!error) return path;
+    if (!/already exists|Duplicate|409/i.test(error.message)) throw error;
+    attempt += 1;
+    path = `${user.id}/${base}-${Date.now()}.${ext}`;
+  }
+  throw new Error("Could not upload receipt.");
+}
+
+export async function getReceiptSignedUrl(path: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase.storage.from("receipts").createSignedUrl(path, 60 * 60);
   if (error) throw error;
-  return path;
+  return data.signedUrl;
 }
 
 export async function updateIssue(input: {
