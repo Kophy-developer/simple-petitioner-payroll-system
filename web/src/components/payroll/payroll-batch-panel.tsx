@@ -128,21 +128,59 @@ export function PayrollBatchPanel() {
                   <Td align="right">{formatCurrency(row.liveBalance)}</Td>
                   <Td align="right">{formatCurrency(row.hold)}</Td>
                   <Td align="right">
-                    <Input
-                      className="ml-auto w-28"
-                      type="number"
-                      step="0.01"
-                      value={row.paidAmount}
-                      onChange={(e) =>
-                        setRows((prev) =>
-                          prev.map((r) =>
-                            r.userId === row.userId
-                              ? { ...r, paidAmount: e.target.value }
-                              : r,
-                          ),
-                        )
-                      }
-                    />
+                    <div className="ml-auto flex w-fit flex-col items-end gap-1.5">
+                      <Input
+                        className="w-28"
+                        type="number"
+                        step="0.01"
+                        value={row.paidAmount}
+                        onChange={(e) =>
+                          setRows((prev) =>
+                            prev.map((r) =>
+                              r.userId === row.userId
+                                ? { ...r, paidAmount: e.target.value }
+                                : r,
+                            ),
+                          )
+                        }
+                      />
+                      <div className="flex gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="rounded-md px-2 py-1 text-[11px]"
+                          onClick={() =>
+                            setRows((prev) =>
+                              prev.map((r) =>
+                                r.userId === row.userId
+                                  ? { ...r, paidAmount: String(row.liveBalance) }
+                                  : r,
+                              ),
+                            )
+                          }
+                        >
+                          Live Amount
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="rounded-md px-2 py-1 text-[11px]"
+                          onClick={() =>
+                            setRows((prev) =>
+                              prev.map((r) =>
+                                r.userId === row.userId
+                                  ? { ...r, paidAmount: String(row.hold) }
+                                  : r,
+                              ),
+                            )
+                          }
+                        >
+                          Holding Amount
+                        </Button>
+                      </div>
+                    </div>
                   </Td>
                   <Td>
                     <Input
