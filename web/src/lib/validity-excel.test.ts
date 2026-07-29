@@ -146,6 +146,20 @@ test("parseValidityWorkbook still accepts legacy initials+email files", () => {
   assert.equal(rows[0].userId, "u1");
 });
 
+test("parseValidityWorkbook skips Total and summary rows", () => {
+  const buffer = workbook([
+    ["Name", "DUPs", "Usable", "Valid", "Validity%"],
+    ["Beau Robacker", 2, 40, 30, 75],
+    ["Total", 10, 100, 80, 80],
+    ["Grand Total", 10, 100, 80, 80],
+    ["Summary", 1, 1, 1, 100],
+  ]);
+  const rows = parseValidityWorkbook(buffer, profiles);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].status, "matched");
+  assert.equal(rows[0].userId, "u2");
+});
+
 test("parseMiFinalValidityWorkbook reads Name aliases", () => {
   const buffer = workbook([
     ["Name", "Duplicate", "Failed", "Wrong County", "Valid", "Usable Raw", "Validity"],

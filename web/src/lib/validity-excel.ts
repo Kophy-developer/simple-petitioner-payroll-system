@@ -60,6 +60,11 @@ function numCell(value: unknown) {
   return Number.isFinite(n) ? n : NaN;
 }
 
+function isSummaryLabel(value: string) {
+  const label = value.trim().toLowerCase().replace(/[:.]+$/g, "");
+  return /^(total|totals|sum|subtotal|sub total|grand total|summary|overall)$/.test(label);
+}
+
 export function parseValidityWorkbook(
   buffer: ArrayBuffer,
   profiles: ValidityProfileMatch[],
@@ -114,6 +119,16 @@ export function parseValidityWorkbook(
       !name &&
       !Number.isFinite(dups) &&
       !Number.isFinite(usable)
+    ) {
+      continue;
+    }
+
+    if (
+      isSummaryLabel(name) ||
+      isSummaryLabel(initials) ||
+      isSummaryLabel(email) ||
+      isSummaryLabel(firstName) ||
+      isSummaryLabel(lastName)
     ) {
       continue;
     }

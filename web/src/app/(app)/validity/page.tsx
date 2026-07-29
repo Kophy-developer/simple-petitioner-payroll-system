@@ -11,6 +11,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DataTable, Td, Th } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { canUploadValidity } from "@/lib/access";
+import { formatApiError } from "@/lib/api-error";
 import { useDemoSession } from "@/lib/demo-session";
 import { formatPercent } from "@/lib/format";
 import {
@@ -136,7 +137,7 @@ export default function ValidityPage() {
       setTimeout(() => setSaved(false), 2500);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save validity.");
+      setError(formatApiError(err, "Could not save validity."));
     } finally {
       setSaving(false);
     }
@@ -169,7 +170,7 @@ export default function ValidityPage() {
         );
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not parse workbook.");
+      setError(formatApiError(err, "Could not parse workbook."));
     }
   }
 
@@ -184,7 +185,12 @@ export default function ValidityPage() {
     setError("");
     setMessage("");
     try {
-      await uploadValidityFile(issueId, pendingFile);
+      let archiveWarning = "";
+      try {
+        await uploadValidityFile(issueId, pendingFile);
+      } catch (uploadErr) {
+        archiveWarning = formatApiError(uploadErr, "Could not archive upload file.");
+      }
       const count = await applyValidityUpload(
         issueId,
         matched.map((r) => ({
@@ -195,13 +201,17 @@ export default function ValidityPage() {
           validityPct: r.validityPct,
         })),
       );
-      setMessage(`Imported ${count} validity row(s). Ledgers recalculated.`);
+      setMessage(
+        archiveWarning
+          ? `Imported ${count} validity row(s). File archive skipped: ${archiveWarning}`
+          : `Imported ${count} validity row(s). Ledgers recalculated where submissions exist.`,
+      );
       setPreview([]);
       setPendingFile(null);
       setFileName(null);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not import validity.");
+      setError(formatApiError(err, "Could not import validity."));
     } finally {
       setSaving(false);
     }
@@ -239,7 +249,7 @@ export default function ValidityPage() {
         );
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not parse workbook.");
+      setError(formatApiError(err, "Could not parse workbook."));
     }
   }
 
@@ -265,7 +275,7 @@ export default function ValidityPage() {
       setTurnInPreview([]);
       setFileName(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not import turn-in validity.");
+      setError(formatApiError(err, "Could not import turn-in validity."));
     } finally {
       setSaving(false);
     }

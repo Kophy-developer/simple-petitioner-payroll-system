@@ -1,3 +1,4 @@
+import { throwApiError } from "@/lib/api-error";
 import { createClient } from "@/lib/supabase/client";
 import { createLodgingExpense as createLodgingExpenseRpc } from "@/lib/api/remodel";
 import type {
@@ -797,14 +798,31 @@ export async function applyValidityUpload(
     p_issue_id: issueId,
     p_rows: rows.map((row) => ({
       user_id: row.userId,
-      dups: row.dups,
-      usable: row.usable,
-      valid: row.valid,
+      dups: Math.round(row.dups),
+      usable: Math.round(row.usable),
+      valid: Math.round(row.valid),
       validity_pct: row.validityPct,
     })),
   });
-  if (error) throw error;
+  if (error) throwApiError(error, "Could not import validity.");
   return num(data);
+}
+
+function validityUploadContentType(file: File) {
+  const ext = (file.name.split(".").pop() || "").toLowerCase();
+  if (ext === "csv") return "text/csv";
+  if (ext === "xls") return "application/vnd.ms-excel";
+  if (ext === "xlsx") {
+    return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  }
+  if (
+    file.type === "text/csv" ||
+    file.type === "application/vnd.ms-excel" ||
+    file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  ) {
+    return file.type;
+  }
+  return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 }
 
 export async function uploadValidityFile(issueId: string, file: File) {
@@ -813,12 +831,13 @@ export async function uploadValidityFile(issueId: string, file: File) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not signed in");
-  const ext = file.name.split(".").pop() || "xlsx";
+  const ext = (file.name.split(".").pop() || "xlsx").toLowerCase().replace(/[^a-z0-9]/g, "") || "xlsx";
   const path = `${issueId}/${user.id}/${Date.now()}.${ext}`;
   const { error } = await supabase.storage.from("validity-uploads").upload(path, file, {
     upsert: false,
+    contentType: validityUploadContentType(file),
   });
-  if (error) throw error;
+  if (error) throwApiError(error, "Could not upload validity file.");
   return path;
 }
 
