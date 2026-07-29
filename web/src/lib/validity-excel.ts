@@ -1,9 +1,11 @@
 import * as XLSX from "xlsx";
+import { matchProfile, type MatchProfile } from "@/lib/profile-match";
 
 export type ValidityPreviewRow = {
   rowNumber: number;
   initials: string;
   email: string;
+  phone: string;
   userId: string | null;
   name: string;
   dups: number;
@@ -14,13 +16,7 @@ export type ValidityPreviewRow = {
   error?: string;
 };
 
-type ProfileMatch = {
-  id: string;
-  initials: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-};
+export type ValidityProfileMatch = MatchProfile;
 
 function normHeader(value: unknown) {
   return String(value ?? "")
@@ -32,8 +28,28 @@ function normHeader(value: unknown) {
 
 function pickCol(headers: string[], aliases: string[]) {
   for (const alias of aliases) {
-    const idx = headers.findIndex((h) => h === alias || h.includes(alias));
+    const exact = headers.findIndex((h) => h === alias);
+    if (exact >= 0) return exact;
+  }
+  for (const alias of aliases) {
+    const idx = headers.findIndex((h) => h.includes(alias));
     if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function pickNameCol(headers: string[]) {
+  const exactAliases = [
+    "full name",
+    "circulator name",
+    "petitioner name",
+    "name",
+    "circulator",
+    "petitioner",
+  ];
+  for (const alias of exactAliases) {
+    const exact = headers.findIndex((h) => h === alias);
+    if (exact >= 0) return exact;
   }
   return -1;
 }
@@ -46,7 +62,7 @@ function numCell(value: unknown) {
 
 export function parseValidityWorkbook(
   buffer: ArrayBuffer,
-  profiles: ProfileMatch[],
+  profiles: ValidityProfileMatch[],
 ): ValidityPreviewRow[] {
   const workbook = XLSX.read(buffer, { type: "array" });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -63,16 +79,17 @@ export function parseValidityWorkbook(
   const headers = (matrix[0] ?? []).map(normHeader);
   const initialsIdx = pickCol(headers, ["initials", "init"]);
   const emailIdx = pickCol(headers, ["email", "e-mail"]);
-  const nameIdx = pickCol(headers, ["name", "circulator", "petitioner"]);
-  const dupsIdx = pickCol(headers, ["dups", "dup"]);
+  const phoneIdx = pickCol(headers, ["phone", "mobile", "cell"]);
+  const nameIdx = pickNameCol(headers);
+  const firstIdx = pickCol(headers, ["first name", "firstname"]);
+  const lastIdx = pickCol(headers, ["last name", "lastname"]);
+  const dupsIdx = pickCol(headers, ["dups", "dup", "duplicates", "duplicate"]);
   const usableIdx = pickCol(headers, ["usable"]);
-  const validIdx = pickCol(headers, ["valid"]);
+  const validIdx = (() => {
+    const exact = headers.findIndex((h) => h === "valid");
+    return exact >= 0 ? exact : -1;
+  })();
   const pctIdx = pickCol(headers, ["validity", "pct", "percent"]);
-
-  const byInitials = new Map(
-    profiles.map((p) => [p.initials.trim().toUpperCase(), p] as const),
-  );
-  const byEmail = new Map(profiles.map((p) => [p.email.trim().toLowerCase(), p] as const));
 
   const rows: ValidityPreviewRow[] = [];
 
@@ -80,13 +97,24 @@ export function parseValidityWorkbook(
     const raw = matrix[i] ?? [];
     const initials = initialsIdx >= 0 ? String(raw[initialsIdx] ?? "").trim() : "";
     const email = emailIdx >= 0 ? String(raw[emailIdx] ?? "").trim() : "";
-    const name = nameIdx >= 0 ? String(raw[nameIdx] ?? "").trim() : "";
+    const phone = phoneIdx >= 0 ? String(raw[phoneIdx] ?? "").trim() : "";
+    const firstName = firstIdx >= 0 ? String(raw[firstIdx] ?? "").trim() : "";
+    const lastName = lastIdx >= 0 ? String(raw[lastIdx] ?? "").trim() : "";
+    const nameCol = nameIdx >= 0 ? String(raw[nameIdx] ?? "").trim() : "";
+    const name = nameCol || [firstName, lastName].filter(Boolean).join(" ");
     const dups = dupsIdx >= 0 ? numCell(raw[dupsIdx]) : 0;
     const usable = usableIdx >= 0 ? numCell(raw[usableIdx]) : 0;
     const valid = validIdx >= 0 ? numCell(raw[validIdx]) : 0;
     let validityPct = pctIdx >= 0 ? numCell(raw[pctIdx]) : NaN;
 
-    if (!initials && !email && !name && !Number.isFinite(dups) && !Number.isFinite(usable)) {
+    if (
+      !initials &&
+      !email &&
+      !phone &&
+      !name &&
+      !Number.isFinite(dups) &&
+      !Number.isFinite(usable)
+    ) {
       continue;
     }
 
@@ -95,34 +123,38 @@ export function parseValidityWorkbook(
     }
     if (!Number.isFinite(validityPct)) validityPct = 0;
 
-    const match =
-      (initials ? byInitials.get(initials.toUpperCase()) : undefined) ??
-      (email ? byEmail.get(email.toLowerCase()) : undefined);
+    const match = matchProfile(
+      { name, firstName, lastName, email, phone, initials },
+      profiles,
+    );
 
-    if (!match) {
+    if (match.status !== "matched") {
       rows.push({
         rowNumber: i + 1,
         initials,
         email,
+        phone,
         userId: null,
-        name: name || initials || email || "—",
+        name: name || email || phone || initials || "—",
         dups: Number.isFinite(dups) ? dups : 0,
         usable: Number.isFinite(usable) ? usable : 0,
         valid: Number.isFinite(valid) ? valid : 0,
         validityPct,
         status: "unmatched",
-        error: "No matching user by initials or email",
+        error: match.reason,
       });
       continue;
     }
 
+    const profile = match.profile;
     if ([dups, usable, valid, validityPct].some((n) => !Number.isFinite(n) || n < 0)) {
       rows.push({
         rowNumber: i + 1,
-        initials: match.initials,
-        email: match.email,
-        userId: match.id,
-        name: `${match.firstName} ${match.lastName}`,
+        initials: profile.initials,
+        email: profile.email,
+        phone: profile.phone ?? phone,
+        userId: profile.id,
+        name: `${profile.firstName} ${profile.lastName}`,
         dups: Number.isFinite(dups) ? dups : 0,
         usable: Number.isFinite(usable) ? usable : 0,
         valid: Number.isFinite(valid) ? valid : 0,
@@ -135,10 +167,11 @@ export function parseValidityWorkbook(
 
     rows.push({
       rowNumber: i + 1,
-      initials: match.initials,
-      email: match.email,
-      userId: match.id,
-      name: `${match.firstName} ${match.lastName}`,
+      initials: profile.initials,
+      email: profile.email,
+      phone: profile.phone ?? phone,
+      userId: profile.id,
+      name: `${profile.firstName} ${profile.lastName}`,
       dups,
       usable,
       valid,

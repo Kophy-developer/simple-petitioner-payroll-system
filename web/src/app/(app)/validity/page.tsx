@@ -159,11 +159,14 @@ export default function ValidityPage() {
           email: p.email,
           firstName: p.firstName,
           lastName: p.lastName,
+          phone: p.phone,
         })),
       );
       setPreview(rows);
       if (rows.length === 0) {
-        setError("No data rows found. Expected headers like Initials, DUPs, Usable, Valid, Validity%.");
+        setError(
+          "No data rows found. Expected headers like Name, Email, Phone, DUPs, Usable, Valid, Validity%.",
+        );
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not parse workbook.");
@@ -254,6 +257,8 @@ export default function ValidityPage() {
           initials: p.initials,
           firstName: p.firstName,
           lastName: p.lastName,
+          email: p.email,
+          phone: p.phone,
         })),
       });
       setMessage(`Imported ${count} turn-in validity row(s). Ledger lines recalculated.`);
@@ -510,7 +515,7 @@ export default function ValidityPage() {
                 <Upload className="text-ink/45" />
                 <p className="mt-2 text-sm font-medium">Drop Excel workbook</p>
                 <p className="mt-1 px-4 text-center text-xs text-ink/45">
-                  Columns: Initials or Email, DUPs, Usable, Valid, Validity%
+                  Columns: Name / Email / Phone, DUPs, Usable, Valid, Validity%
                 </p>
                 <input
                   type="file"

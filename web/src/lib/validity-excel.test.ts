@@ -2,30 +2,168 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import * as XLSX from "xlsx";
 import { parseValidityWorkbook } from "./validity-excel";
+import { matchProfile, normalizeMatchName, normalizePhoneDigits } from "./profile-match";
+import {
+  parseCoBatchValidityWorkbook,
+  parseMiFinalValidityWorkbook,
+} from "./validity-import";
 
-test("parseValidityWorkbook matches by initials and email", () => {
-  const sheet = XLSX.utils.aoa_to_sheet([
-    ["Initials", "Email", "DUPs", "Usable", "Valid", "Validity%"],
-    ["JR", "jordan@ballotaccesspros.com", 4, 31, 27, 75],
-    ["XX", "nobody@example.com", 1, 2, 1, 50],
-  ]);
+const profiles = [
+  {
+    id: "u1",
+    initials: "JR",
+    email: "jordan@ballotaccesspros.com",
+    firstName: "Jordan",
+    lastName: "Reed",
+    phone: "(512) 555-0101",
+  },
+  {
+    id: "u2",
+    initials: "BR",
+    email: "beau@ballotaccesspros.com",
+    firstName: "Beau",
+    lastName: "Robacker",
+    phone: "2145550199",
+  },
+  {
+    id: "u3",
+    initials: "JR",
+    email: "jane@ballotaccesspros.com",
+    firstName: "Jane",
+    lastName: "Rivers",
+    phone: null,
+  },
+];
+
+function workbook(rows: (string | number)[][]) {
+  const sheet = XLSX.utils.aoa_to_sheet(rows);
   const book = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(book, sheet, "Sheet1");
-  const buffer = XLSX.write(book, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+  return XLSX.write(book, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+}
 
-  const rows = parseValidityWorkbook(buffer, [
-    {
-      id: "u1",
-      initials: "JR",
-      email: "jordan@ballotaccesspros.com",
-      firstName: "Jordan",
-      lastName: "Reed",
-    },
+test("normalizeMatchName handles Last, First and punctuation", () => {
+  assert.equal(normalizeMatchName("Robacker, Beau"), "beau robacker");
+  assert.equal(normalizeMatchName("  Beau   Robacker "), "beau robacker");
+  assert.equal(normalizeMatchName("Beau-Robacker"), "beau robacker");
+});
+
+test("normalizePhoneDigits strips formatting and leading 1", () => {
+  assert.equal(normalizePhoneDigits("+1 (512) 555-0101"), "5125550101");
+  assert.equal(normalizePhoneDigits("5125550101"), "5125550101");
+});
+
+test("matchProfile prefers email then phone then exact name", () => {
+  const byEmail = matchProfile({ email: "BEAU@ballotaccesspros.com", name: "Wrong Name" }, profiles);
+  assert.equal(byEmail.status, "matched");
+  if (byEmail.status === "matched") {
+    assert.equal(byEmail.profile.id, "u2");
+    assert.equal(byEmail.method, "email");
+  }
+
+  const byPhone = matchProfile({ phone: "214-555-0199" }, profiles);
+  assert.equal(byPhone.status, "matched");
+  if (byPhone.status === "matched") {
+    assert.equal(byPhone.profile.id, "u2");
+    assert.equal(byPhone.method, "phone");
+  }
+
+  const byName = matchProfile({ name: "Beau Robacker" }, profiles);
+  assert.equal(byName.status, "matched");
+  if (byName.status === "matched") {
+    assert.equal(byName.profile.id, "u2");
+    assert.equal(byName.method, "name");
+  }
+});
+
+test("matchProfile supports Last, First and unique fuzzy names", () => {
+  const flipped = matchProfile({ name: "Robacker, Beau" }, profiles);
+  assert.equal(flipped.status, "matched");
+  if (flipped.status === "matched") assert.equal(flipped.profile.id, "u2");
+
+  const fuzzy = matchProfile({ name: "Beau Robackr" }, profiles);
+  assert.equal(fuzzy.status, "matched");
+  if (fuzzy.status === "matched") {
+    assert.equal(fuzzy.profile.id, "u2");
+    assert.equal(fuzzy.method, "fuzzy_name");
+  }
+});
+
+test("matchProfile leaves ambiguous and missing names unmatched", () => {
+  const ambiguous = matchProfile({ initials: "JR" }, profiles);
+  assert.equal(ambiguous.status, "ambiguous");
+
+  const missing = matchProfile({ name: "Nobody Here" }, profiles);
+  assert.equal(missing.status, "unmatched");
+  if (missing.status === "unmatched") {
+    assert.match(missing.reason, /name, email, or phone/i);
+  }
+});
+
+test("parseValidityWorkbook matches by name email and phone", () => {
+  const buffer = workbook([
+    ["Name", "Email", "Phone", "DUPs", "Usable", "Valid", "Validity%"],
+    ["Beau Robacker", "", "", 2, 40, 30, 75],
+    ["", "jordan@ballotaccesspros.com", "", 4, 31, 27, 87.1],
+    ["", "", "512-555-0101", 1, 10, 8, 80],
+    ["Nobody", "", "", 0, 1, 0, 0],
   ]);
 
-  assert.equal(rows.length, 2);
+  const rows = parseValidityWorkbook(buffer, profiles);
+  assert.equal(rows.length, 4);
+  assert.equal(rows[0].status, "matched");
+  assert.equal(rows[0].userId, "u2");
+  assert.equal(rows[1].status, "matched");
+  assert.equal(rows[1].userId, "u1");
+  assert.equal(rows[2].status, "matched");
+  assert.equal(rows[2].userId, "u1");
+  assert.equal(rows[3].status, "unmatched");
+  assert.match(String(rows[3].error), /name, email, or phone/i);
+});
+
+test("parseValidityWorkbook keeps initials as unique last resort and reports ambiguity", () => {
+  const buffer = workbook([
+    ["Initials", "DUPs", "Usable", "Valid", "Validity%"],
+    ["BR", 1, 5, 4, 80],
+    ["JR", 1, 5, 4, 80],
+  ]);
+
+  const rows = parseValidityWorkbook(buffer, profiles);
+  assert.equal(rows[0].status, "matched");
+  assert.equal(rows[0].userId, "u2");
+  assert.equal(rows[1].status, "unmatched");
+  assert.match(String(rows[1].error), /ambiguous initials/i);
+});
+
+test("parseValidityWorkbook still accepts legacy initials+email files", () => {
+  const buffer = workbook([
+    ["Initials", "Email", "DUPs", "Usable", "Valid", "Validity%"],
+    ["XX", "jordan@ballotaccesspros.com", 4, 31, 27, 75],
+  ]);
+  const rows = parseValidityWorkbook(buffer, profiles);
+  assert.equal(rows.length, 1);
   assert.equal(rows[0].status, "matched");
   assert.equal(rows[0].userId, "u1");
-  assert.equal(rows[0].dups, 4);
-  assert.equal(rows[1].status, "unmatched");
+});
+
+test("parseMiFinalValidityWorkbook reads Name aliases", () => {
+  const buffer = workbook([
+    ["Name", "Duplicate", "Failed", "Wrong County", "Valid", "Usable Raw", "Validity"],
+    ["Beau Robacker", 1, 0, 0, 20, 25, 80],
+  ]);
+  const rows = parseMiFinalValidityWorkbook(buffer);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].name, "Beau Robacker");
+  assert.equal(rows[0].valid, 20);
+});
+
+test("parseCoBatchValidityWorkbook reads circulator aliases", () => {
+  const buffer = workbook([
+    ["circulator", "duplicate_n", "usable_cn", "valid_cn", "validity_cn"],
+    ["Beau Robacker", 2, 30, 24, 80],
+  ]);
+  const rows = parseCoBatchValidityWorkbook(buffer);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].circulator, "Beau Robacker");
+  assert.equal(rows[0].validCn, 24);
 });

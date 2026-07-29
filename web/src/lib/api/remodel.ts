@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { matchProfile } from "@/lib/profile-match";
 import type {
   BrexTransaction,
   HousingShareKind,
@@ -730,7 +731,14 @@ export async function listValidityNameMap() {
 
 export function resolveCirculatorUserId(
   nameOrInitials: string,
-  profiles: { id: string; initials: string; firstName: string; lastName: string }[],
+  profiles: {
+    id: string;
+    initials: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    phone?: string | null;
+  }[],
   nameMap: { initials: string; reportName: string }[],
 ) {
   const key = nameOrInitials.trim().toLowerCase();
@@ -739,40 +747,61 @@ export function resolveCirculatorUserId(
     (m) =>
       m.initials.toLowerCase() === key || m.reportName.toLowerCase() === key,
   );
-  const search = (mapped?.reportName ?? nameOrInitials).trim().toLowerCase();
-  const byInitials = profiles.find((p) => p.initials.toLowerCase() === key);
-  if (byInitials) return byInitials.id;
-  const byFull = profiles.find(
-    (p) => `${p.firstName} ${p.lastName}`.toLowerCase() === search,
+  const search = (mapped?.reportName ?? nameOrInitials).trim();
+  const looksLikeEmail = search.includes("@");
+  const digits = search.replace(/\D/g, "");
+  const looksLikePhone =
+    !looksLikeEmail &&
+    digits.length >= 7 &&
+    /^[\d\s().+-]+$/.test(search);
+  const result = matchProfile(
+    {
+      name: looksLikeEmail || looksLikePhone ? undefined : search,
+      email: looksLikeEmail ? search : undefined,
+      phone: looksLikePhone ? search : undefined,
+      initials: looksLikeEmail || looksLikePhone ? undefined : search,
+    },
+    profiles.map((p) => ({
+      id: p.id,
+      initials: p.initials,
+      email: p.email ?? "",
+      firstName: p.firstName,
+      lastName: p.lastName,
+      phone: p.phone,
+    })),
   );
-  if (byFull) return byFull.id;
-  const byLast = profiles.find((p) => p.lastName.toLowerCase() === search);
-  return byLast?.id ?? null;
+  if (result.status === "matched") return result.profile.id;
+  return null;
 }
 
 export function resolveCirculatorFromReportRow(
   row: { firstName: string; lastName: string; initials: string },
-  profiles: { id: string; initials: string; firstName: string; lastName: string }[],
+  profiles: {
+    id: string;
+    initials: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    phone?: string | null;
+  }[],
 ) {
-  const initials = row.initials.trim().toUpperCase();
-  if (initials) {
-    const byInitials = profiles.filter((p) => p.initials.toUpperCase() === initials);
-    if (byInitials.length === 1) return byInitials[0].id;
-    if (byInitials.length > 1) {
-      const byName = byInitials.find(
-        (p) =>
-          p.firstName.toLowerCase() === row.firstName.trim().toLowerCase() &&
-          p.lastName.toLowerCase() === row.lastName.trim().toLowerCase(),
-      );
-      if (byName) return byName.id;
-    }
-  }
-  const byFull = profiles.find(
-    (p) =>
-      p.firstName.toLowerCase() === row.firstName.trim().toLowerCase() &&
-      p.lastName.toLowerCase() === row.lastName.trim().toLowerCase(),
+  const result = matchProfile(
+    {
+      name: `${row.firstName} ${row.lastName}`.trim(),
+      firstName: row.firstName,
+      lastName: row.lastName,
+      initials: row.initials,
+    },
+    profiles.map((p) => ({
+      id: p.id,
+      initials: p.initials,
+      email: p.email ?? "",
+      firstName: p.firstName,
+      lastName: p.lastName,
+      phone: p.phone,
+    })),
   );
-  return byFull?.id ?? null;
+  return result.status === "matched" ? result.profile.id : null;
 }
 
 export async function ensureTurnInColumns(turnInId: string, pricedLineIds: string[]) {
@@ -933,7 +962,14 @@ export async function importTurnInValidityRows(input: {
     failed?: number;
     wrongCounty?: number;
   }[];
-  profiles: { id: string; initials: string; firstName: string; lastName: string }[];
+  profiles: {
+    id: string;
+    initials: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    phone?: string | null;
+  }[];
 }) {
   const nameMap = await listValidityNameMap();
   let matched = 0;
