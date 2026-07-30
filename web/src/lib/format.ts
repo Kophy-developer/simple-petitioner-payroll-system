@@ -1,3 +1,5 @@
+import { normalizeValidityPercent } from "@/lib/payroll-math";
+
 export function formatCurrency(value: number | null | undefined): string {
   if (value === null || value === undefined) {
     return "—";
@@ -16,6 +18,15 @@ export function formatPercent(value: number | null | undefined): string {
   }
 
   return `${value}%`;
+}
+
+export function formatValidityPercent(value: number | null | undefined): string {
+  if (value === null || value === undefined) {
+    return "—";
+  }
+  const normalized = normalizeValidityPercent(value);
+  if (normalized === null) return "—";
+  return `${normalized}%`;
 }
 
 export function formatDate(value: string): string {

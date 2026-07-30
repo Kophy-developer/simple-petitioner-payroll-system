@@ -180,4 +180,57 @@ test("parseCoBatchValidityWorkbook reads circulator aliases", () => {
   assert.equal(rows.length, 1);
   assert.equal(rows[0].circulator, "Beau Robacker");
   assert.equal(rows[0].validCn, 24);
+  assert.equal(rows[0].validityPct, 80);
+});
+
+test("parseValidityWorkbook normalizes fractional validity percents", () => {
+  const buffer = workbook([
+    ["Name", "DUPs", "Usable", "Valid", "Validity%"],
+    ["Beau Robacker", 2, 40, 30, 0.75],
+    ["Beau Robacker", 0, 100, 74.8, 0.748],
+    ["Beau Robacker", 0, 100, 61, 0.61],
+    ["Beau Robacker", 0, 50, 40, 61],
+    ["Beau Robacker", 0, 100, 100, 1],
+    ["Beau Robacker", 0, 0, 0, 1],
+    ["Beau Robacker", 0, 80, 60, ""],
+  ]);
+
+  const rows = parseValidityWorkbook(buffer, profiles);
+  assert.equal(rows[0].validityPct, 75);
+  assert.equal(rows[1].validityPct, 74.8);
+  assert.equal(rows[2].validityPct, 61);
+  assert.equal(rows[3].validityPct, 61);
+  assert.equal(rows[4].validityPct, 100);
+  assert.equal(rows[5].validityPct, 1);
+  assert.equal(rows[6].validityPct, 75);
+});
+
+test("normalizeValidityPercent scales stored fractions for display", async () => {
+  const { normalizeValidityPercent } = await import("./payroll-math");
+  assert.equal(normalizeValidityPercent(0.61), 61);
+  assert.equal(normalizeValidityPercent(0.748), 74.8);
+  assert.equal(normalizeValidityPercent(61), 61);
+  assert.equal(normalizeValidityPercent(74.8), 74.8);
+  assert.equal(normalizeValidityPercent(1), 1);
+  assert.equal(normalizeValidityPercent(null), null);
+});
+
+test("parseCoBatchValidityWorkbook normalizes fractional validity", () => {
+  const buffer = workbook([
+    ["circulator", "duplicate_n", "usable_cn", "valid_cn", "validity_cn"],
+    ["Beau Robacker", 2, 30, 24, 0.8],
+  ]);
+  const rows = parseCoBatchValidityWorkbook(buffer);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].validityPct, 80);
+});
+
+test("parseMiFinalValidityWorkbook normalizes fractional validity", () => {
+  const buffer = workbook([
+    ["Name", "Duplicate", "Failed", "Wrong County", "Valid", "Usable Raw", "Validity"],
+    ["Beau Robacker", 1, 0, 0, 20, 25, 0.8],
+  ]);
+  const rows = parseMiFinalValidityWorkbook(buffer);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].validityPct, 80);
 });

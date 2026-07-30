@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { resolveImportedValidityPercent } from "@/lib/payroll-math";
 
 export type CoBatchValidityRow = {
   batchDate: string | null;
@@ -35,6 +36,14 @@ function n(value: unknown) {
   const cleaned = String(value).replace(/%/g, "").trim();
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function pctCell(value: unknown) {
+  if (value == null || value === "") return NaN;
+  if (typeof value === "number") return value;
+  const cleaned = String(value).replace(/%/g, "").trim();
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : NaN;
 }
 
 function normKey(value: unknown) {
@@ -77,43 +86,51 @@ export function parseCoBatchValidityWorkbook(buffer: ArrayBuffer): CoBatchValidi
   const sheet = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null });
   return rows
-    .map((row) => ({
-      batchDate: (() => {
-        const v = cell(row, ["batchDate", "batch date"], { exactOnly: true });
-        return v == null || v === "" ? null : String(v);
-      })(),
-      petition: (() => {
-        const v = cell(row, ["petition"], { exactOnly: true });
-        return v == null || v === "" ? null : String(v);
-      })(),
-      priceCode: (() => {
-        const v = cell(row, ["priceCode", "price code"], { exactOnly: true });
-        return v == null || v === "" ? null : String(v);
-      })(),
-      team: (() => {
-        const v = cell(row, ["team"], { exactOnly: true });
-        return v == null || v === "" ? null : String(v);
-      })(),
-      circulator: textCell(row, [
-        "circulator",
-        "name",
-        "full name",
-        "petitioner",
-        "email",
-        "phone",
-      ]),
-      processedCn: n(cell(row, ["processed_cn", "processed"])),
-      deficientN: n(cell(row, ["deficient_n", "deficient"])),
-      duplicateN: n(cell(row, ["duplicate_n", "duplicate", "dups", "dup"])),
-      disqualifiedN: n(cell(row, ["disqualified_n", "disqualified"])),
-      usableCn: n(cell(row, ["usable_cn", "usable"])),
-      hardMatchN: n(cell(row, ["hardMatch_n", "hardMatch", "hard match"])),
-      softMatchN: n(cell(row, ["softMatch_n", "softMatch", "soft match"])),
-      registrationN: n(cell(row, ["registration_n", "registration"])),
-      nonMatchN: n(cell(row, ["nonMatch_n", "nonMatch", "non match"])),
-      validCn: n(cell(row, ["valid_cn", "valid"], { exactOnly: true })),
-      validityPct: n(cell(row, ["validity_cn", "validity", "validity pct"])),
-    }))
+    .map((row) => {
+      const usableCn = n(cell(row, ["usable_cn", "usable"]));
+      const validCn = n(cell(row, ["valid_cn", "valid"], { exactOnly: true }));
+      return {
+        batchDate: (() => {
+          const v = cell(row, ["batchDate", "batch date"], { exactOnly: true });
+          return v == null || v === "" ? null : String(v);
+        })(),
+        petition: (() => {
+          const v = cell(row, ["petition"], { exactOnly: true });
+          return v == null || v === "" ? null : String(v);
+        })(),
+        priceCode: (() => {
+          const v = cell(row, ["priceCode", "price code"], { exactOnly: true });
+          return v == null || v === "" ? null : String(v);
+        })(),
+        team: (() => {
+          const v = cell(row, ["team"], { exactOnly: true });
+          return v == null || v === "" ? null : String(v);
+        })(),
+        circulator: textCell(row, [
+          "circulator",
+          "name",
+          "full name",
+          "petitioner",
+          "email",
+          "phone",
+        ]),
+        processedCn: n(cell(row, ["processed_cn", "processed"])),
+        deficientN: n(cell(row, ["deficient_n", "deficient"])),
+        duplicateN: n(cell(row, ["duplicate_n", "duplicate", "dups", "dup"])),
+        disqualifiedN: n(cell(row, ["disqualified_n", "disqualified"])),
+        usableCn,
+        hardMatchN: n(cell(row, ["hardMatch_n", "hardMatch", "hard match"])),
+        softMatchN: n(cell(row, ["softMatch_n", "softMatch", "soft match"])),
+        registrationN: n(cell(row, ["registration_n", "registration"])),
+        nonMatchN: n(cell(row, ["nonMatch_n", "nonMatch", "non match"])),
+        validCn,
+        validityPct: resolveImportedValidityPercent(
+          pctCell(cell(row, ["validity_cn", "validity", "validity pct"])),
+          validCn,
+          usableCn,
+        ),
+      };
+    })
     .filter((row) => row.circulator);
 }
 
@@ -122,14 +139,22 @@ export function parseMiFinalValidityWorkbook(buffer: ArrayBuffer): MiFinalValidi
   const sheet = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null });
   return rows
-    .map((row) => ({
-      name: textCell(row, ["Name", "name", "full name", "circulator", "petitioner", "email", "phone"]),
-      duplicate: n(cell(row, ["Duplicate", "duplicate", "dups", "dup"])),
-      failed: n(cell(row, ["Failed", "failed"])),
-      wrongCounty: n(cell(row, ["Wrong County", "wrong county", "wrongcounty"])),
-      valid: n(cell(row, ["Valid", "valid"], { exactOnly: true })),
-      usableRaw: n(cell(row, ["Usable Raw", "usable raw", "usable"])),
-      validityPct: n(cell(row, ["Validity", "validity", "validity pct"])),
-    }))
+    .map((row) => {
+      const usableRaw = n(cell(row, ["Usable Raw", "usable raw", "usable"]));
+      const valid = n(cell(row, ["Valid", "valid"], { exactOnly: true }));
+      return {
+        name: textCell(row, ["Name", "name", "full name", "circulator", "petitioner", "email", "phone"]),
+        duplicate: n(cell(row, ["Duplicate", "duplicate", "dups", "dup"])),
+        failed: n(cell(row, ["Failed", "failed"])),
+        wrongCounty: n(cell(row, ["Wrong County", "wrong county", "wrongcounty"])),
+        valid,
+        usableRaw,
+        validityPct: resolveImportedValidityPercent(
+          pctCell(cell(row, ["Validity", "validity", "validity pct"])),
+          valid,
+          usableRaw,
+        ),
+      };
+    })
     .filter((row) => row.name);
 }

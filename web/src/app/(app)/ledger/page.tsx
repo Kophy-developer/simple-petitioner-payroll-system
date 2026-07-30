@@ -16,7 +16,7 @@ import { useDemoSession } from "@/lib/demo-session";
 import { canViewAllLedgers, isFieldRole } from "@/lib/access";
 import { canAccessLotusLedger } from "@/lib/navigation";
 import { payModelLabel } from "@/lib/payroll";
-import { formatCurrency, formatDateTime, formatPercent } from "@/lib/format";
+import { formatCurrency, formatDateTime, formatValidityPercent } from "@/lib/format";
 import {
   authUserId,
   listIssues,
@@ -500,7 +500,7 @@ function LedgerContent() {
                           <Td align="right">{line.dups ?? "—"}</Td>
                           <Td align="right">{line.usable ?? "—"}</Td>
                           <Td align="right">{line.valid ?? "—"}</Td>
-                          <Td align="right">{formatPercent(line.validityPercent)}</Td>
+                          <Td align="right">{formatValidityPercent(line.validityPercent)}</Td>
                           <Td align="right">{line.payRate.toFixed(4)}</Td>
                           <Td align="right">{line.payable ?? "—"}</Td>
                           <Td align="right">{formatCurrency(line.totalPay)}</Td>
@@ -563,7 +563,7 @@ function LedgerContent() {
                           <Td align="right">{row.dups ?? "—"}</Td>
                           <Td align="right">{row.usable ?? "—"}</Td>
                           <Td align="right">{row.valid ?? "—"}</Td>
-                          <Td align="right">{formatPercent(row.validityPercent)}</Td>
+                          <Td align="right">{formatValidityPercent(row.validityPercent)}</Td>
                           <Td align="right">{formatCurrency(row.payRate)}</Td>
                           <Td align="right">{row.payable ?? "—"}</Td>
                           <Td align="right">{formatCurrency(row.totalPay)}</Td>

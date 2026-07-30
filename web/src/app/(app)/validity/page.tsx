@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { canUploadValidity } from "@/lib/access";
 import { formatApiError } from "@/lib/api-error";
 import { useDemoSession } from "@/lib/demo-session";
-import { formatPercent } from "@/lib/format";
+import { formatValidityPercent } from "@/lib/format";
 import {
   applyValidityUpload,
   listIssues,
@@ -124,6 +124,7 @@ export default function ValidityPage() {
     if (!issueId || !userId) return;
     setSaving(true);
     setError("");
+    setMessage("");
     try {
       await upsertValidityManual({
         issueId,
@@ -133,6 +134,9 @@ export default function ValidityPage() {
         valid: parseInt(valid, 10),
         validityPct: parseFloat(validityPct),
       });
+      const person = petitioners.find((p) => p.id === userId);
+      const who = person ? `${person.firstName} ${person.lastName}` : "circulator";
+      setMessage(`Saved validity for ${who} (${validityPct}%). Ledger recalculated where submissions exist.`);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
       await load();
@@ -168,6 +172,14 @@ export default function ValidityPage() {
         setError(
           "No data rows found. Expected headers like Name, Email, Phone, DUPs, Usable, Valid, Validity%.",
         );
+      } else {
+        const matched = rows.filter((r) => r.status === "matched").length;
+        const skipped = rows.length - matched;
+        if (skipped > 0) {
+          setMessage(
+            `Preview ready: ${matched} matched, ${skipped} unmatched/skipped (Totals and unmatched names are not imported).`,
+          );
+        }
       }
     } catch (err) {
       setError(formatApiError(err, "Could not parse workbook."));
@@ -201,10 +213,13 @@ export default function ValidityPage() {
           validityPct: r.validityPct,
         })),
       );
+      const skipped = preview.length - matched.length;
+      const skipNote =
+        skipped > 0 ? ` Skipped ${skipped} unmatched/Total row(s).` : "";
       setMessage(
         archiveWarning
-          ? `Imported ${count} validity row(s). File archive skipped: ${archiveWarning}`
-          : `Imported ${count} validity row(s). Ledgers recalculated where submissions exist.`,
+          ? `Imported ${count} validity row(s).${skipNote} File archive skipped: ${archiveWarning}`
+          : `Imported ${count} validity row(s).${skipNote} Ledgers recalculated where submissions exist.`,
       );
       setPreview([]);
       setPendingFile(null);
@@ -398,7 +413,7 @@ export default function ValidityPage() {
                       <Td align="right">{r.dups}</Td>
                       <Td align="right">{r.usable}</Td>
                       <Td align="right">{r.valid}</Td>
-                      <Td align="right">{formatPercent(r.validityPercent)}</Td>
+                      <Td align="right">{formatValidityPercent(r.validityPercent)}</Td>
                       <Td><Badge>{r.entryMethod}</Badge></Td>
                     </tr>
                   ))}
@@ -572,7 +587,7 @@ export default function ValidityPage() {
                       <Td align="right">{row.dups}</Td>
                       <Td align="right">{row.usable}</Td>
                       <Td align="right">{row.valid}</Td>
-                      <Td align="right">{formatPercent(row.validityPct)}</Td>
+                      <Td align="right">{formatValidityPercent(row.validityPct)}</Td>
                       <Td>
                         <Badge tone={row.status === "matched" ? "success" : "warning"}>
                           {row.status}

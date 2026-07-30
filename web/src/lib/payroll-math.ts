@@ -3,6 +3,38 @@ export function validityPercent(valid: number, usable: number) {
   return Math.round((valid / usable) * 10000) / 100;
 }
 
+export function normalizeValidityPercent(value: number | null | undefined): number | null {
+  if (value === null || value === undefined) return null;
+  if (!Number.isFinite(value)) return value;
+  if (value > 0 && value < 1) return Math.round(value * 1000) / 10;
+  return value;
+}
+
+export function resolveImportedValidityPercent(
+  pct: number,
+  valid: number,
+  usable: number,
+): number {
+  const hasCounts = usable > 0 && Number.isFinite(usable) && Number.isFinite(valid);
+  const computed = hasCounts ? Math.round((valid / usable) * 1000) / 10 : NaN;
+
+  if (!Number.isFinite(pct)) {
+    return Number.isFinite(computed) ? computed : 0;
+  }
+
+  if (pct > 0 && pct < 1) {
+    if (Number.isFinite(computed)) return computed;
+    return normalizeValidityPercent(pct) ?? Math.round(pct * 1000) / 10;
+  }
+
+  if (pct === 1) {
+    if (hasCounts && valid / usable >= 0.995) return 100;
+    return 1;
+  }
+
+  return pct;
+}
+
 export function payRateFromBenchmark(validityPct: number, benchmarkPct: number) {
   if (!benchmarkPct || benchmarkPct <= 0) return 0;
   return Math.min(validityPct / benchmarkPct, 1);

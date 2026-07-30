@@ -1,5 +1,11 @@
 import * as XLSX from "xlsx";
 import { matchProfile, type MatchProfile } from "@/lib/profile-match";
+import {
+  normalizeValidityPercent,
+  resolveImportedValidityPercent,
+} from "@/lib/payroll-math";
+
+export { normalizeValidityPercent, resolveImportedValidityPercent };
 
 export type ValidityPreviewRow = {
   rowNumber: number;
@@ -110,7 +116,7 @@ export function parseValidityWorkbook(
     const dups = dupsIdx >= 0 ? numCell(raw[dupsIdx]) : 0;
     const usable = usableIdx >= 0 ? numCell(raw[usableIdx]) : 0;
     const valid = validIdx >= 0 ? numCell(raw[validIdx]) : 0;
-    let validityPct = pctIdx >= 0 ? numCell(raw[pctIdx]) : NaN;
+    const rawPct = pctIdx >= 0 ? numCell(raw[pctIdx]) : NaN;
 
     if (
       !initials &&
@@ -133,10 +139,9 @@ export function parseValidityWorkbook(
       continue;
     }
 
-    if (!Number.isFinite(validityPct) && usable > 0 && Number.isFinite(valid)) {
-      validityPct = Math.round((valid / usable) * 1000) / 10;
-    }
-    if (!Number.isFinite(validityPct)) validityPct = 0;
+    const finiteUsable = Number.isFinite(usable) ? usable : 0;
+    const finiteValid = Number.isFinite(valid) ? valid : 0;
+    const validityPct = resolveImportedValidityPercent(rawPct, finiteValid, finiteUsable);
 
     const match = matchProfile(
       { name, firstName, lastName, email, phone, initials },
