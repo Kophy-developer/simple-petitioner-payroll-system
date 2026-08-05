@@ -396,6 +396,7 @@ export default function DirectoryPage() {
                     "account_admin",
                     "team_lead",
                     "petitioner",
+                    "canvasser",
                   ] as UserRole[]
                 ).map((r) => (
                   <option key={r} value={r}>

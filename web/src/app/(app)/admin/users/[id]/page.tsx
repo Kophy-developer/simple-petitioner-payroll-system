@@ -111,6 +111,7 @@ export default function AdminUserPage({ params }: { params: Promise<{ id: string
                       "account_admin",
                       "team_lead",
                       "petitioner",
+                      "canvasser",
                     ] as UserRole[]
                   ).map((r) => (
                     <option key={r} value={r}>

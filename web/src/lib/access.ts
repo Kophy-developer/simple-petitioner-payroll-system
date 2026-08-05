@@ -1,4 +1,4 @@
-import type { DemoUser, UserRole } from "./types";
+import type { UserRole } from "./types";
 
 export function canViewAllLedgers(role: UserRole) {
   return role === "super_admin" || role === "account_admin";
@@ -16,8 +16,12 @@ export function canApproveLoans(role: UserRole) {
   return role === "super_admin";
 }
 
+export function isFieldWorkerRole(role: UserRole) {
+  return role === "petitioner" || role === "canvasser";
+}
+
 export function isFieldRole(role: UserRole) {
-  return role === "petitioner" || role === "team_lead";
+  return isFieldWorkerRole(role) || role === "team_lead";
 }
 
 export function canRunPayroll(role: UserRole) {
@@ -40,7 +44,14 @@ export function canManageUsers(role: UserRole) {
   return role === "super_admin" || role === "account_admin";
 }
 
-export function visibleUserIds(viewer: DemoUser, allUserIds: string[]) {
+export function canAccessPhase2Console(role: UserRole) {
+  return role === "super_admin" || role === "account_admin";
+}
+
+export function visibleUserIds(
+  viewer: { authId?: string; id: string; role: UserRole; teamMemberIds?: string[] },
+  allUserIds: string[],
+) {
   const selfId = viewer.authId ?? viewer.id;
   if (canViewAllLedgers(viewer.role)) return allUserIds;
   if (canViewTeamData(viewer.role)) {
@@ -49,6 +60,6 @@ export function visibleUserIds(viewer: DemoUser, allUserIds: string[]) {
   return [selfId];
 }
 
-export function userDisplayName(user: Pick<DemoUser, "firstName" | "lastName">) {
+export function userDisplayName(user: { firstName: string; lastName: string }) {
   return `${user.firstName} ${user.lastName}`;
 }
