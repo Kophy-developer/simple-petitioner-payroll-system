@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Run on the Droplet after copying migrations to /tmp/bap-migrations
-# Usage: bash apply-bap-migrations.sh
-
 ROOT="${1:-/tmp/bap-migrations}"
 COMPOSE_DIR="${COMPOSE_DIR:-/opt/supabase/docker}"
 

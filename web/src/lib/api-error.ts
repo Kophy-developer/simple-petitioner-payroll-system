@@ -21,7 +21,6 @@ export function formatApiError(err: unknown, fallback = "Something went wrong.")
       const raw = JSON.stringify(err);
       if (raw && raw !== "{}") return raw;
     } catch {
-      /* ignore */
     }
   }
   return fallback;

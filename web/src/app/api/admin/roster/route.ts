@@ -36,7 +36,6 @@ function formatErr(err: unknown): string {
     const raw = JSON.stringify(err);
     if (raw && raw !== "{}") return raw;
   } catch {
-    /* ignore */
   }
   return "Unknown error";
 }
