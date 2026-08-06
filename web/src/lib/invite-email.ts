@@ -1,4 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  inviteEmailContent,
+  mailEnvStatus,
+  passwordResetEmailContent,
+  type EmailContent,
+} from "@/lib/email-templates";
 
 export type InviteEmailResult = {
   emailed: boolean;
@@ -23,11 +29,9 @@ function redirectTo() {
   return `${withProto}/reset-password`;
 }
 
-async function sendViaResend(input: {
+export async function sendViaResend(input: {
   to: string;
-  subject: string;
-  html: string;
-  text: string;
+  content: EmailContent;
 }) {
   const key = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
@@ -42,9 +46,9 @@ async function sendViaResend(input: {
     body: JSON.stringify({
       from,
       to: [input.to],
-      subject: input.subject,
-      html: input.html,
-      text: input.text,
+      subject: input.content.subject,
+      html: input.content.html,
+      text: input.content.text,
     }),
   });
 
@@ -55,21 +59,8 @@ async function sendViaResend(input: {
   return "resend" as const;
 }
 
-function inviteCopy(firstName: string, actionLink: string) {
-  const name = firstName.trim() || "there";
-  const subject = "Your Ballot Access Pros payroll login";
-  const text = `Hi ${name},
-
-Your Ballot Access Pros account is ready. Set your password and sign in here:
-${actionLink}
-
-If you did not expect this email, ignore it.`;
-  const html = `<p>Hi ${name},</p><p>Your Ballot Access Pros account is ready. <a href="${actionLink}">Set your password and sign in</a>.</p><p>If you did not expect this email, ignore it.</p>`;
-  return { subject, text, html };
-}
-
 export function inviteEmailConfigured() {
-  return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+  return mailEnvStatus().configured;
 }
 
 export async function sendUserInviteEmail(
@@ -106,15 +97,10 @@ export async function sendUserInviteEmail(
     };
   }
 
-  const copy = inviteCopy(input.firstName, actionLink);
+  const content = inviteEmailContent(input.firstName, actionLink);
 
   try {
-    const viaResend = await sendViaResend({
-      to: email,
-      subject: copy.subject,
-      html: copy.html,
-      text: copy.text,
-    });
+    const viaResend = await sendViaResend({ to: email, content });
     if (viaResend) {
       return { emailed: true, provider: viaResend, actionLink };
     }
@@ -155,5 +141,68 @@ export async function sendUserInviteEmail(
   }
 }
 
+export async function sendPasswordResetEmail(
+  admin: SupabaseClient,
+  emailRaw: string,
+): Promise<InviteEmailResult> {
+  const email = emailRaw.trim().toLowerCase();
+  const redirect = redirectTo();
+  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+    type: "recovery",
+    email,
+    options: redirect ? { redirectTo: redirect } : undefined,
+  });
+
+  if (linkError) {
+    return { emailed: false, provider: "none", message: linkError.message };
+  }
+
+  const actionLink =
+    linkData.properties?.action_link ||
+    (linkData as { action_link?: string }).action_link ||
+    "";
+
+  if (!actionLink) {
+    return { emailed: false, provider: "none", message: "Could not generate reset link." };
+  }
+
+  const content = passwordResetEmailContent(actionLink);
+  try {
+    const viaResend = await sendViaResend({ to: email, content });
+    if (viaResend) {
+      return { emailed: true, provider: viaResend, actionLink };
+    }
+  } catch (e) {
+    return {
+      emailed: false,
+      provider: "none",
+      message: e instanceof Error ? e.message : "Resend send failed",
+      actionLink,
+    };
+  }
+
+  try {
+    const { error } = await admin.auth.resetPasswordForEmail(email, {
+      redirectTo: redirect,
+    });
+    if (error) {
+      return {
+        emailed: false,
+        provider: "none",
+        message: error.message || "Email not sent. Configure RESEND_API_KEY + EMAIL_FROM.",
+        actionLink,
+      };
+    }
+    return { emailed: true, provider: "supabase_smtp", actionLink };
+  } catch (e) {
+    return {
+      emailed: false,
+      provider: "none",
+      message: e instanceof Error ? e.message : "Email not sent.",
+      actionLink,
+    };
+  }
+}
+
 export const INVITE_ENV_HINT =
-  "Requires RESEND_API_KEY + EMAIL_FROM (app mail), or Supabase Auth SMTP (see scripts/apply-resend-smtp-on-droplet.sh). NEXT_PUBLIC_SITE_URL or SITE_URL should point at the app for password-reset links.";
+  "Requires RESEND_API_KEY + EMAIL_FROM on Vercel, or Supabase Auth SMTP on the droplet (scripts/apply-resend-smtp-on-droplet.sh). Set NEXT_PUBLIC_SITE_URL to the app origin for reset links.";

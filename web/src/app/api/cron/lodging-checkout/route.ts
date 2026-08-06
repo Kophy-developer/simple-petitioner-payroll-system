@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendTwilioSms, twilioConfigured } from "@/lib/twilio";
 import { requireCronAuth } from "@/lib/cron-auth";
+import { checkoutReminderEmailContent } from "@/lib/email-templates";
+import { sendViaResend } from "@/lib/invite-email";
 
 export async function GET(request: Request) {
   const denied = requireCronAuth(request);
@@ -29,6 +31,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  let emailed = 0;
+  let emailFailed = 0;
   const reminders = [];
   for (const row of open ?? []) {
     const profile = row.profiles as
@@ -43,21 +47,35 @@ export async function GET(request: Request) {
     const prop = Array.isArray(property) ? property[0] : property;
     if (!person?.email) continue;
 
-    const subject = `Checkout reminder: ${prop?.name ?? "lodging"}`;
-    const body = `Hi ${person.first_name}, please confirm checkout for ${prop?.name ?? "your stay"} (room ${row.room_number}). Reply in Field Operations if already checked out.`;
+    const content = checkoutReminderEmailContent({
+      firstName: person.first_name,
+      propertyName: prop?.name ?? "lodging",
+      roomNumber: row.room_number ?? "",
+    });
+
+    let emailDelivery: "sent" | "not_configured" | "failed" = "not_configured";
+    try {
+      const via = await sendViaResend({ to: person.email, content });
+      if (via) {
+        emailDelivery = "sent";
+        emailed += 1;
+      }
+    } catch {
+      emailDelivery = "failed";
+      emailFailed += 1;
+    }
 
     let sms: Awaited<ReturnType<typeof sendTwilioSms>> | null = null;
     if (twilioConfigured() && person.phone) {
-      sms = await sendTwilioSms(person.phone, body);
+      sms = await sendTwilioSms(person.phone, content.text);
     }
 
     reminders.push({
       occupancyId: row.id,
       email: person.email,
-      subject,
-      body,
+      subject: content.subject,
+      emailDelivery,
       sms,
-      emailDelivery: "not_sent",
     });
   }
 
@@ -65,8 +83,8 @@ export async function GET(request: Request) {
     ok: true,
     openCount: open?.length ?? 0,
     reminders,
-    emailDelivery: "not_sent",
+    emailed,
+    emailFailed,
     smsDelivery: twilioConfigured() ? "attempted_when_phone_present" : "twilio_not_configured",
-    note: "Checkout reminder emails are not sent by this job. Twilio SMS sends only when TWILIO_* env vars are set.",
   });
 }
