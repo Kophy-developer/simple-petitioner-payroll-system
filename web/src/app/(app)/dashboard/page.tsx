@@ -162,8 +162,6 @@ export default function DashboardPage() {
               value={String(issuesAwaitingValidity)}
               tone={issuesAwaitingValidity ? "warning" : "default"}
             />
-            <StatCard label="Open issues" value={String(issueCount)} />
-            <StatCard label="Manual entries" value={String(validityCount)} />
           </>
         ) : null}
       </div>

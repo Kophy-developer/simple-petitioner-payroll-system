@@ -7,6 +7,7 @@ export type NavItem = {
   section?: string;
   matchPrefix?: boolean;
   nested?: boolean;
+  parentHref?: string;
 };
 
 const fieldWorkersAndUp: UserRole[] = [
@@ -35,15 +36,15 @@ export const navItems: NavItem[] = [
   { href: "/validity", label: "Validity Records", roles: adminRoles, section: "Collection" },
   { href: "/imports", label: "Imports", roles: adminRoles, section: "Collection" },
   { href: "/directory", label: "Employee Directory", roles: adminRoles, section: "People" },
-  { href: "/admin/teams", label: "Teams", roles: adminRoles, section: "People", nested: true },
+  { href: "/admin/teams", label: "Teams", roles: adminRoles, section: "People", nested: true, parentHref: "/directory" },
   { href: "/ledger", label: "Ledger", roles: moneyRoles, section: "Payroll", matchPrefix: true },
   { href: "/payroll", label: "Payroll & Expenses", roles: moneyRoles, section: "Payroll", matchPrefix: true },
   { href: "/brex", label: "Brex", roles: moneyRoles, section: "Payroll", matchPrefix: true },
   { href: "/loans", label: "Loans & Advances", roles: moneyRoles, section: "Payroll", matchPrefix: true },
   { href: "/admin", label: "Admin Overview", roles: adminRoles, section: "Configuration" },
-  { href: "/admin/pay-rates", label: "Pay Rates", roles: adminRoles, section: "Configuration", nested: true },
-  { href: "/admin/field-ops", label: "Housing & Cars", roles: adminRoles, section: "Configuration", nested: true },
-  { href: "/admin/clock", label: "Clock Breadcrumbs", roles: adminRoles, section: "Configuration", nested: true },
+  { href: "/admin/pay-rates", label: "Pay Rates", roles: adminRoles, section: "Configuration", nested: true, parentHref: "/admin" },
+  { href: "/admin/field-ops", label: "Housing & Cars", roles: adminRoles, section: "Configuration", nested: true, parentHref: "/admin" },
+  { href: "/admin/clock", label: "Clock Breadcrumbs", roles: adminRoles, section: "Configuration", nested: true, parentHref: "/admin" },
 ];
 
 const deepLinkAccess: { href: string; roles: UserRole[]; matchPrefix?: boolean }[] = [

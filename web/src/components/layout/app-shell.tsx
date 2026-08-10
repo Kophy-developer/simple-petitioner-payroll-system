@@ -1,20 +1,47 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { LogOut, Menu, User, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { ChevronDown, LogOut, Menu, User, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Logo } from "@/components/layout/logo";
 import { OffboardFab } from "@/components/layout/offboard-fab";
 import { ClockPrompt } from "@/components/clock/clock-prompt";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { useDemoSession } from "@/lib/demo-session";
-import { getNavForRole, isNavActive, roleLabel } from "@/lib/navigation";
+import { getNavForRole, isNavActive, roleLabel, type NavItem } from "@/lib/navigation";
 import { userDisplayName } from "@/lib/access";
 import type { UserRole } from "@/lib/types";
 
 const SIDEBAR_SCROLL_KEY = "bap-sidebar-scroll";
+const NAV_OPEN_KEY = "bap-nav-open";
+
+type NavGroup = {
+  item: NavItem;
+  children: NavItem[];
+};
+
+function groupNavItems(items: NavItem[]): NavGroup[] {
+  const childrenByParent = new Map<string, NavItem[]>();
+  for (const item of items) {
+    if (!item.parentHref) continue;
+    const list = childrenByParent.get(item.parentHref) ?? [];
+    list.push(item);
+    childrenByParent.set(item.parentHref, list);
+  }
+
+  const groups: NavGroup[] = [];
+  for (const item of items) {
+    if (item.parentHref) continue;
+    groups.push({ item, children: childrenByParent.get(item.href) ?? [] });
+  }
+  return groups;
+}
+
+function childIsActive(pathname: string, children: NavItem[]) {
+  return children.some((child) => isNavActive(pathname, child.href, child.matchPrefix));
+}
 
 function NavLinks({
   role,
@@ -25,15 +52,62 @@ function NavLinks({
   pathname: string;
   onNavigate?: () => void;
 }) {
-  const items = getNavForRole(role);
+  const router = useRouter();
+  const groups = useMemo(() => groupNavItems(getNavForRole(role)), [role]);
+  const [openParents, setOpenParents] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(NAV_OPEN_KEY);
+      if (raw) setOpenParents(JSON.parse(raw) as Record<string, boolean>);
+    } catch {
+    }
+  }, []);
+
+  useEffect(() => {
+    setOpenParents((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const group of groups) {
+        if (group.children.length === 0) continue;
+        if (childIsActive(pathname, group.children) && !next[group.item.href]) {
+          next[group.item.href] = true;
+          changed = true;
+        }
+      }
+      if (changed) {
+        try {
+          sessionStorage.setItem(NAV_OPEN_KEY, JSON.stringify(next));
+        } catch {
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [pathname, groups]);
+
+  function toggleParent(href: string) {
+    setOpenParents((prev) => {
+      const next = { ...prev, [href]: !prev[href] };
+      try {
+        sessionStorage.setItem(NAV_OPEN_KEY, JSON.stringify(next));
+      } catch {
+      }
+      return next;
+    });
+  }
+
   let lastSection = "";
 
   return (
     <nav className="space-y-1">
-      {items.map((item) => {
+      {groups.map(({ item, children }) => {
         const showSection = item.section && item.section !== lastSection;
         if (item.section) lastSection = item.section;
         const active = isNavActive(pathname, item.href, item.matchPrefix);
+        const childActive = childIsActive(pathname, children);
+        const hasChildren = children.length > 0;
+        const open = hasChildren && Boolean(openParents[item.href]);
+
         return (
           <div key={item.href}>
             {showSection ? (
@@ -41,20 +115,69 @@ function NavLinks({
                 {item.section}
               </p>
             ) : null}
-            <Link
-              href={item.href}
-              onClick={onNavigate}
-              data-nav-active={active ? "true" : undefined}
-              className={cn(
-                "flex items-center rounded-xl py-2.5 text-sm transition",
-                item.nested ? "ml-3 border-l border-ink/10 pl-3 pr-3" : "px-3",
-                active
-                  ? "bg-brass/15 font-medium text-ink"
-                  : "text-ink/70 hover:bg-ink/5 hover:text-ink",
-              )}
-            >
-              <span>{item.label}</span>
-            </Link>
+            {hasChildren ? (
+              <button
+                type="button"
+                data-nav-active={active || childActive ? "true" : undefined}
+                onClick={() => {
+                  const willOpen = !open;
+                  toggleParent(item.href);
+                  if (willOpen) {
+                    router.push(item.href);
+                    onNavigate?.();
+                  }
+                }}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition",
+                  active || childActive
+                    ? "bg-brass/15 font-medium text-ink"
+                    : "text-ink/70 hover:bg-ink/5 hover:text-ink",
+                )}
+              >
+                <span>{item.label}</span>
+                <ChevronDown
+                  size={14}
+                  className={cn("shrink-0 text-ink/40 transition", open ? "rotate-0" : "-rotate-90")}
+                />
+              </button>
+            ) : (
+              <Link
+                href={item.href}
+                onClick={onNavigate}
+                data-nav-active={active ? "true" : undefined}
+                className={cn(
+                  "flex items-center rounded-xl px-3 py-2.5 text-sm transition",
+                  active
+                    ? "bg-brass/15 font-medium text-ink"
+                    : "text-ink/70 hover:bg-ink/5 hover:text-ink",
+                )}
+              >
+                <span>{item.label}</span>
+              </Link>
+            )}
+            {hasChildren && open ? (
+              <div className="mt-1 space-y-1 border-l border-ink/10 ml-3 pl-2">
+                {children.map((child) => {
+                  const childActiveItem = isNavActive(pathname, child.href, child.matchPrefix);
+                  return (
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      onClick={onNavigate}
+                      data-nav-active={childActiveItem ? "true" : undefined}
+                      className={cn(
+                        "flex items-center rounded-xl px-3 py-2 text-sm transition",
+                        childActiveItem
+                          ? "bg-brass/15 font-medium text-ink"
+                          : "text-ink/70 hover:bg-ink/5 hover:text-ink",
+                      )}
+                    >
+                      <span>{child.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
         );
       })}
