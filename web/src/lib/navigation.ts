@@ -29,8 +29,6 @@ export const navItems: NavItem[] = [
   { href: "/payroll", label: "Payroll & Expenses", roles: fieldAndUp, section: "Payroll", matchPrefix: true },
   { href: "/brex", label: "Brex", roles: fieldAndUp, section: "Payroll", matchPrefix: true },
   { href: "/loans", label: "Loans & Advances", roles: fieldAndUp, section: "Payroll", matchPrefix: true },
-  { href: "/messages", label: "Messages", roles: fieldAndUp, section: "Communication", matchPrefix: true },
-  { href: "/phase2", label: "Phase 2", roles: ["super_admin", "account_admin"], section: "Configuration", matchPrefix: true },
   { href: "/admin", label: "Admin Panel", roles: ["super_admin", "account_admin"], section: "Configuration", matchPrefix: true },
 ];
 
@@ -45,8 +43,6 @@ const deepLinkAccess: { href: string; roles: UserRole[]; matchPrefix?: boolean }
   { href: "/payroll?tab=housing-cars", roles: ["super_admin", "account_admin"] },
   { href: "/colorado-import", roles: ["super_admin", "account_admin"] },
   { href: "/validity", roles: ["super_admin", "account_admin"] },
-  { href: "/phase2", roles: ["super_admin", "account_admin"], matchPrefix: true },
-  { href: "/messages", roles: fieldAndUp, matchPrefix: true },
   { href: "/brex/contractor-payouts", roles: ["super_admin", "account_admin"] },
 ];
 
@@ -81,6 +77,12 @@ export function canAccess(role: UserRole, pathname: string) {
   }
   if (pathname.startsWith("/onboarding")) {
     return true;
+  }
+  if (pathname === "/messages" || pathname.startsWith("/messages/")) {
+    return false;
+  }
+  if (pathname === "/phase2" || pathname.startsWith("/phase2/")) {
+    return false;
   }
   if (pathname === "/reports" || pathname.startsWith("/reports")) {
     return role === "super_admin" || role === "account_admin" || role === "team_lead";

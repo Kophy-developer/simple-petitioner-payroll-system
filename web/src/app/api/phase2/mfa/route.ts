@@ -24,7 +24,6 @@ export async function GET() {
     enroll: {
       available: true,
       ui: "/brex/contractor-payouts",
-      adminConsole: "/phase2",
       payouts: "/brex/contractor-payouts",
       message:
         "Login 2FA is off. Authenticator enroll/step-up is only for Brex contractor payouts testing. Droplet AAL stays off.",
