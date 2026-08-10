@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function ColoradoImporterPage() {
-  redirect("/imports?tab=validity");
+export default function ColoradoImportPage() {
+  redirect("/validity");
 }

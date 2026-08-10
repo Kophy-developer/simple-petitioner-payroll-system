@@ -1,22 +1,56 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
-import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
-import { PayRatesPanel } from "@/components/admin/pay-rates-panel";
 import { getBenchmark, getHoldPct } from "@/lib/api/live";
 import { useDemoSession } from "@/lib/demo-session";
-import {
-  canAccessFieldOps,
-  canAccessPayRates,
-} from "@/lib/navigation";
+import { canManageUsers } from "@/lib/access";
+import { canAccessFieldOps, canAccessPayRates } from "@/lib/navigation";
 
-type AdminTab = "overview" | "pay-rates";
+const tools = [
+  {
+    href: "/directory",
+    title: "Employee directory",
+    description: "Create and edit people, invites, and wages.",
+    show: (role: string) => canManageUsers(role as never),
+  },
+  {
+    href: "/admin/teams",
+    title: "Teams",
+    description: "Assign petitioners and canvassers to team leads.",
+    show: (role: string) => canManageUsers(role as never),
+  },
+  {
+    href: "/admin/pay-rates",
+    title: "Pay rates",
+    description: "Rates, validity benchmark, and hold percent.",
+    show: (role: string) => canAccessPayRates(role as never),
+  },
+  {
+    href: "/admin/field-ops",
+    title: "Housing & cars",
+    description: "Assign stays and rental cars.",
+    show: (role: string) => canAccessFieldOps(role as never),
+  },
+  {
+    href: "/admin/clock",
+    title: "Clock breadcrumbs",
+    description: "GPS clock-in paths on the map.",
+    show: () => true,
+  },
+  {
+    href: "/imports",
+    title: "Imports",
+    description: "Employee roster and collection uploads.",
+    show: (role: string) => canManageUsers(role as never) || canAccessPayRates(role as never),
+  },
+] as const;
 
-function AdminContent() {
+function AdminOverview() {
   const { user } = useDemoSession();
   const router = useRouter();
   const params = useSearchParams();
@@ -25,27 +59,14 @@ function AdminContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const canPayRates = user ? canAccessPayRates(user.role) : false;
-  const canField = user ? canAccessFieldOps(user.role) : false;
-
   useEffect(() => {
-    if (params.get("tab") === "field-ops") {
-      router.replace("/payroll?tab=housing-cars");
-    }
-    if (params.get("tab") === "expense-config") {
-      router.replace("/admin");
-    }
+    const tab = params.get("tab");
+    if (tab === "pay-rates") router.replace("/admin/pay-rates");
+    if (tab === "field-ops") router.replace("/admin/field-ops");
+    if (tab === "expense-config") router.replace("/admin");
   }, [params, router]);
 
-  const requested = params.get("tab");
-  const tab: AdminTab =
-    requested === "pay-rates" && canPayRates ? "pay-rates" : "overview";
-
   useEffect(() => {
-    if (tab !== "overview") {
-      setLoading(false);
-      return;
-    }
     void Promise.all([getBenchmark(), getHoldPct()])
       .then(([bench, hold]) => {
         setBenchmark(bench);
@@ -53,138 +74,59 @@ function AdminContent() {
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Could not load admin data."))
       .finally(() => setLoading(false));
-  }, [tab]);
+  }, []);
 
   if (!user) return null;
 
-  function setTab(next: AdminTab) {
-    const nextParams = new URLSearchParams();
-    if (next !== "overview") nextParams.set("tab", next);
-    const qs = nextParams.toString();
-    router.push(qs ? `/admin?${qs}` : "/admin");
-  }
-
-  const title = tab === "pay-rates" ? "Pay Rates" : "Admin Panel";
-  const description =
-    tab === "pay-rates"
-      ? "Set pay rates, benchmark, and hold percent."
-      : "System settings and shortcuts.";
+  const visibleTools = tools.filter((t) => t.show(user.role));
 
   return (
     <div className="space-y-8">
       <PageHeader
         eyebrow="Configuration"
-        title={title}
-        description={description}
-        actions={
-          <div className="flex flex-wrap rounded-full border border-ink/15 bg-white/70 p-1">
-            <Button
-              size="sm"
-              variant={tab === "overview" ? "primary" : "ghost"}
-              className={tab === "overview" ? "" : "border-0 bg-transparent"}
-              onClick={() => setTab("overview")}
-            >
-              Overview
-            </Button>
-            {canPayRates ? (
-              <Button
-                size="sm"
-                variant={tab === "pay-rates" ? "primary" : "ghost"}
-                className={tab === "pay-rates" ? "" : "border-0 bg-transparent"}
-                onClick={() => setTab("pay-rates")}
-              >
-                Pay Rates
-              </Button>
-            ) : null}
-          </div>
-        }
+        title="Admin overview"
+        description="Shortcuts into configuration tools. The same destinations are in the sidebar."
       />
+      {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
+      {loading ? <p className="text-sm text-ink/55">Loading…</p> : null}
 
-      {tab === "pay-rates" ? (
-        <PayRatesPanel />
-      ) : (
-        <>
-          {error ? <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
-          {loading ? <p className="text-sm text-ink/55">Loading…</p> : null}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <CardBody>
+            <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Benchmark %</p>
+            <p className="font-display text-4xl tabular-nums">{benchmark}%</p>
+            <Link href="/admin/pay-rates" className="mt-3 inline-block text-sm text-civic-navy hover:underline">
+              Edit in pay rates
+            </Link>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody>
+            <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Hold %</p>
+            <p className="font-display text-4xl tabular-nums">{holdPct}%</p>
+            <p className="mt-1 text-sm text-ink/55">Live pay {100 - holdPct}%</p>
+            <Link href="/admin/pay-rates" className="mt-3 inline-block text-sm text-civic-navy hover:underline">
+              Edit in pay rates
+            </Link>
+          </CardBody>
+        </Card>
+      </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Card className="max-w-sm">
-              <CardBody>
-                <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Benchmark %</p>
-                <p className="font-display text-4xl tabular-nums">{benchmark}%</p>
-                {canPayRates ? (
-                  <button
-                    type="button"
-                    onClick={() => setTab("pay-rates")}
-                    className="mt-3 inline-block text-sm text-civic-navy hover:underline"
-                  >
-                    Edit via pay rates
-                  </button>
-                ) : null}
-              </CardBody>
-            </Card>
-            <Card className="max-w-sm">
-              <CardBody>
-                <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Hold %</p>
-                <p className="font-display text-4xl tabular-nums">{holdPct}%</p>
-                <p className="mt-1 text-sm text-ink/55">Live pay {100 - holdPct}%</p>
-                {user.role === "super_admin" ? (
-                  <button
-                    type="button"
-                    onClick={() => setTab("pay-rates")}
-                    className="mt-3 inline-block text-sm text-civic-navy hover:underline"
-                  >
-                    Edit hold percent
-                  </button>
-                ) : null}
-              </CardBody>
-            </Card>
-          </div>
-
-          <Card>
-            <CardBody className="space-y-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-ink/50">Configuration</p>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="/directory" className="font-medium text-civic-navy hover:underline">
-                    Employee Directory
-                  </Link>
-                  <span className="text-ink/55"> — import employees, teams, create &amp; edit users</span>
-                </li>
-                {canPayRates ? (
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => setTab("pay-rates")}
-                      className="font-medium text-civic-navy hover:underline"
-                    >
-                      Pay Rates
-                    </button>
-                    <span className="text-ink/55"> — rates, benchmark, and hold</span>
-                  </li>
-                ) : null}
-                {canField ? (
-                  <li>
-                    <Link
-                      href="/payroll?tab=housing-cars"
-                      className="font-medium text-civic-navy hover:underline"
-                    >
-                      Housing &amp; cars
-                    </Link>
-                    <span className="text-ink/55"> — assign stays and rentals</span>
-                  </li>
-                ) : null}
-                <li>
-                  <Link href="/admin/clock" className="font-medium text-civic-navy hover:underline">
-                    Clock breadcrumbs
-                  </Link>
-                  <span className="text-ink/55"> — GPS clock-in paths on Mapbox</span>
-                </li>
-              </ul>
-            </CardBody>
-          </Card>
-        </>
-      )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        {visibleTools.map((tool) => (
+          <Link
+            key={tool.href}
+            href={tool.href}
+            className="flex items-center justify-between rounded-2xl border border-ink/10 bg-white/70 px-5 py-4 transition hover:border-brass/30 hover:bg-brass/5"
+          >
+            <div>
+              <p className="text-sm font-medium text-ink">{tool.title}</p>
+              <p className="mt-1 text-xs text-ink/55">{tool.description}</p>
+            </div>
+            <ArrowRight size={16} className="shrink-0 text-ink/35" />
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
@@ -192,7 +134,7 @@ function AdminContent() {
 export default function AdminPage() {
   return (
     <Suspense fallback={<div className="py-20 text-center">Loading admin…</div>}>
-      <AdminContent />
+      <AdminOverview />
     </Suspense>
   );
 }

@@ -149,13 +149,13 @@ export default function AdminClockPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Admin"
+        eyebrow="Configuration"
         title="Clock breadcrumbs"
         description="Field clock-in paths with minute GPS pings."
         actions={
           <Link href="/admin">
             <Button type="button" variant="ghost" size="sm">
-              Back to admin
+              Back to overview
             </Button>
           </Link>
         }

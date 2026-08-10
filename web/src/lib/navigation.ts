@@ -6,6 +6,7 @@ export type NavItem = {
   roles: UserRole[];
   section?: string;
   matchPrefix?: boolean;
+  nested?: boolean;
 };
 
 const fieldWorkersAndUp: UserRole[] = [
@@ -23,20 +24,26 @@ const moneyRoles: UserRole[] = [
   "canvasser",
 ];
 
+const adminRoles: UserRole[] = ["super_admin", "account_admin"];
+
 export const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", roles: fieldWorkersAndUp, section: "Overview" },
   { href: "/turn-ins", label: "Turn-ins", roles: fieldWorkersAndUp, section: "Collection", matchPrefix: true },
   { href: "/issues", label: "Issues & Petitions", roles: fieldWorkersAndUp, section: "Collection" },
   { href: "/submissions", label: "Submissions", roles: fieldWorkersAndUp, section: "Collection" },
   { href: "/collection", label: "Master Collection", roles: ["super_admin", "account_admin", "team_lead"], section: "Collection" },
-  { href: "/validity", label: "Validity Records", roles: ["super_admin", "account_admin"], section: "Collection" },
-  { href: "/imports", label: "Imports", roles: ["super_admin", "account_admin"], section: "Collection", matchPrefix: true },
-  { href: "/directory", label: "Employee Directory", roles: ["super_admin", "account_admin"], section: "People" },
+  { href: "/validity", label: "Validity Records", roles: adminRoles, section: "Collection" },
+  { href: "/imports", label: "Imports", roles: adminRoles, section: "Collection" },
+  { href: "/directory", label: "Employee Directory", roles: adminRoles, section: "People" },
+  { href: "/admin/teams", label: "Teams", roles: adminRoles, section: "People", nested: true },
   { href: "/ledger", label: "Ledger", roles: moneyRoles, section: "Payroll", matchPrefix: true },
   { href: "/payroll", label: "Payroll & Expenses", roles: moneyRoles, section: "Payroll", matchPrefix: true },
   { href: "/brex", label: "Brex", roles: moneyRoles, section: "Payroll", matchPrefix: true },
   { href: "/loans", label: "Loans & Advances", roles: moneyRoles, section: "Payroll", matchPrefix: true },
-  { href: "/admin", label: "Admin Panel", roles: ["super_admin", "account_admin"], section: "Configuration", matchPrefix: true },
+  { href: "/admin", label: "Admin Overview", roles: adminRoles, section: "Configuration" },
+  { href: "/admin/pay-rates", label: "Pay Rates", roles: adminRoles, section: "Configuration", nested: true },
+  { href: "/admin/field-ops", label: "Housing & Cars", roles: adminRoles, section: "Configuration", nested: true },
+  { href: "/admin/clock", label: "Clock Breadcrumbs", roles: adminRoles, section: "Configuration", nested: true },
 ];
 
 const deepLinkAccess: { href: string; roles: UserRole[]; matchPrefix?: boolean }[] = [
@@ -45,13 +52,18 @@ const deepLinkAccess: { href: string; roles: UserRole[]; matchPrefix?: boolean }
     roles: moneyRoles,
     matchPrefix: true,
   },
-  { href: "/pay-rates", roles: ["super_admin", "account_admin"] },
-  { href: "/field-ops", roles: ["super_admin", "account_admin"] },
-  { href: "/payroll?tab=housing-cars", roles: ["super_admin", "account_admin"] },
-  { href: "/colorado-import", roles: ["super_admin", "account_admin"] },
-  { href: "/validity", roles: ["super_admin", "account_admin"] },
-  { href: "/brex/contractor-payouts", roles: ["super_admin", "account_admin"] },
-  { href: "/clock", roles: ["super_admin", "account_admin"], matchPrefix: true },
+  { href: "/pay-rates", roles: adminRoles },
+  { href: "/field-ops", roles: adminRoles },
+  { href: "/admin/users", roles: adminRoles, matchPrefix: true },
+  { href: "/admin/teams", roles: adminRoles },
+  { href: "/admin/pay-rates", roles: adminRoles },
+  { href: "/admin/field-ops", roles: adminRoles },
+  { href: "/admin/clock", roles: adminRoles },
+  { href: "/colorado-import", roles: adminRoles },
+  { href: "/validity", roles: adminRoles },
+  { href: "/brex/contractor-payouts", roles: adminRoles },
+  { href: "/clock", roles: adminRoles, matchPrefix: true },
+  { href: "/imports", roles: adminRoles, matchPrefix: true },
 ];
 
 export function getNavForRole(role: UserRole) {

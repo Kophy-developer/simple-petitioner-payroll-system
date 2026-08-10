@@ -46,7 +46,8 @@ function NavLinks({
               onClick={onNavigate}
               data-nav-active={active ? "true" : undefined}
               className={cn(
-                "flex items-center rounded-xl px-3 py-2.5 text-sm transition",
+                "flex items-center rounded-xl py-2.5 text-sm transition",
+                item.nested ? "ml-3 border-l border-ink/10 pl-3 pr-3" : "px-3",
                 active
                   ? "bg-brass/15 font-medium text-ink"
                   : "text-ink/70 hover:bg-ink/5 hover:text-ink",
