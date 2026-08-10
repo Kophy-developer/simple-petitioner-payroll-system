@@ -10,10 +10,12 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { useDemoSession } from "@/lib/demo-session";
 import {
   canApproveLoans,
+  canAccessMoneyScreens,
   canRunPayroll,
   canUploadValidity,
   canViewAllLedgers,
   isFieldRole,
+  isTeamLead,
 } from "@/lib/access";
 import { getNavForRole } from "@/lib/navigation";
 import { formatCurrency } from "@/lib/format";
@@ -27,6 +29,7 @@ import {
   listValidity,
   type PayrollBalance,
 } from "@/lib/api/live";
+import { MyRentalCarCard } from "@/components/field-ops/my-rental-car-card";
 
 const emptyBalance: PayrollBalance = {
   totalPay: 0,
@@ -49,14 +52,18 @@ export default function DashboardPage() {
   const load = useCallback(async () => {
     if (!user) return;
     try {
-      const bal = await getExpenseBalance(authUserId(user));
-      setBalance(bal);
+      if (canAccessMoneyScreens(user.role)) {
+        const bal = await getExpenseBalance(authUserId(user));
+        setBalance(bal);
+      } else {
+        setBalance(emptyBalance);
+      }
 
-      if (canViewAllLedgers(user.role) || canUploadValidity(user.role)) {
+      if (canViewAllLedgers(user.role) || canUploadValidity(user.role) || isTeamLead(user.role)) {
         const [issues, submissions, validity] = await Promise.all([
           listIssues(),
           listSubmissions(),
-          listValidity(),
+          canUploadValidity(user.role) ? listValidity() : Promise.resolve([]),
         ]);
         setIssueCount(issues.length);
         setSubmissionCount(submissions.length);
@@ -93,7 +100,7 @@ export default function DashboardPage() {
     canViewAllLedgers(user.role) && negativeCount > 0
       ? { label: `${negativeCount} circulator(s) with negative balance`, href: "/payroll", tone: "danger" as const }
       : null,
-    balance.liveBalance < 0 && isFieldRole(user.role)
+    balance.liveBalance < 0 && canAccessMoneyScreens(user.role)
       ? { label: "Your live balance is negative", href: "/payroll", tone: "danger" as const }
       : null,
   ].filter(Boolean) as { label: string; href: string; tone: "warning" | "danger" }[];
@@ -127,7 +134,7 @@ export default function DashboardPage() {
           </>
         ) : null}
 
-        {isFieldRole(user.role) ? (
+        {canAccessMoneyScreens(user.role) && isFieldRole(user.role) ? (
           <>
             <StatCard
               label="Live balance"
@@ -137,6 +144,13 @@ export default function DashboardPage() {
             <StatCard label="Hold balance" value={formatCurrency(balance.totalHold)} />
             <StatCard label="Total pay (YTD)" value={formatCurrency(balance.totalPay)} />
             <StatCard label="Expenses (YTD)" value={formatCurrency(balance.totalExpenses)} />
+          </>
+        ) : null}
+
+        {isTeamLead(user.role) ? (
+          <>
+            <StatCard label="Open issues" value={String(issueCount)} />
+            <StatCard label="Team submissions" value={String(submissionCount)} />
           </>
         ) : null}
 
@@ -166,6 +180,8 @@ export default function DashboardPage() {
           <ArrowRight size={16} className="text-ink/40" />
         </Link>
       ) : null}
+
+      <MyRentalCarCard />
 
       {alerts.length > 0 ? (
         <div className="grid gap-3">

@@ -1094,12 +1094,18 @@ export async function assignRentalCar(input: {
   return data;
 }
 
-export async function returnRentalCar(assignmentId: string, returnAt?: string, oneWayFee?: number) {
+export async function returnRentalCar(
+  assignmentId: string,
+  returnAt?: string,
+  oneWayFee?: number,
+  dropoffLocation?: string,
+) {
   const supabase = createClient();
   const { error } = await supabase.rpc("return_rental_car", {
     p_assignment_id: assignmentId,
     p_return_at: returnAt ?? new Date().toISOString().slice(0, 10),
     p_one_way_fee: oneWayFee ?? null,
+    p_dropoff_location: dropoffLocation ?? null,
   });
   if (error) throw error;
 }

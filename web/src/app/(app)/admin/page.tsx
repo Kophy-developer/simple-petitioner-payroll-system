@@ -174,6 +174,12 @@ function AdminContent() {
                     <span className="text-ink/55"> — assign stays and rentals</span>
                   </li>
                 ) : null}
+                <li>
+                  <Link href="/admin/clock" className="font-medium text-civic-navy hover:underline">
+                    Clock breadcrumbs
+                  </Link>
+                  <span className="text-ink/55"> — GPS clock-in paths on Mapbox</span>
+                </li>
               </ul>
             </CardBody>
           </Card>

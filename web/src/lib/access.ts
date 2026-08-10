@@ -1,6 +1,19 @@
 import type { UserRole } from "./types";
 import { canLeadRole, rolesTeamLeadMayManage } from "@/lib/phase2/roles-and-chat-acl";
 
+export function isTeamLead(role: UserRole) {
+  return role === "team_lead";
+}
+
+export function canAccessMoneyScreens(role: UserRole) {
+  return (
+    role === "super_admin" ||
+    role === "account_admin" ||
+    role === "petitioner" ||
+    role === "canvasser"
+  );
+}
+
 export function canViewAllLedgers(role: UserRole) {
   return role === "super_admin" || role === "account_admin";
 }
@@ -19,7 +32,7 @@ export function teamLeadCanManageMember(leadRole: UserRole, memberRole: UserRole
 }
 
 export function teamLeadScopeNote() {
-  return "Team leads may oversee petitioners, canvassers, or both. Field worker roles share the same Phase 2 messaging and payroll field rules until Phase 3.";
+  return "Team leads oversee petitioners and/or canvassers and do field work themselves. They do not access ledger, payroll, Brex, or loans.";
 }
 
 export function canEditFinancialConfig(role: UserRole) {
@@ -43,7 +56,7 @@ export function canRunPayroll(role: UserRole) {
 }
 
 export function canRequestLoan(role: UserRole) {
-  return isFieldRole(role);
+  return isFieldWorkerRole(role);
 }
 
 export function canUploadValidity(role: UserRole) {

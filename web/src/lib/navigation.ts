@@ -8,7 +8,7 @@ export type NavItem = {
   matchPrefix?: boolean;
 };
 
-const fieldAndUp: UserRole[] = [
+const fieldWorkersAndUp: UserRole[] = [
   "super_admin",
   "account_admin",
   "team_lead",
@@ -16,26 +16,33 @@ const fieldAndUp: UserRole[] = [
   "canvasser",
 ];
 
+const moneyRoles: UserRole[] = [
+  "super_admin",
+  "account_admin",
+  "petitioner",
+  "canvasser",
+];
+
 export const navItems: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", roles: fieldAndUp, section: "Overview" },
-  { href: "/turn-ins", label: "Turn-ins", roles: fieldAndUp, section: "Collection", matchPrefix: true },
-  { href: "/issues", label: "Issues & Petitions", roles: fieldAndUp, section: "Collection" },
-  { href: "/submissions", label: "Submissions", roles: fieldAndUp, section: "Collection" },
+  { href: "/dashboard", label: "Dashboard", roles: fieldWorkersAndUp, section: "Overview" },
+  { href: "/turn-ins", label: "Turn-ins", roles: fieldWorkersAndUp, section: "Collection", matchPrefix: true },
+  { href: "/issues", label: "Issues & Petitions", roles: fieldWorkersAndUp, section: "Collection" },
+  { href: "/submissions", label: "Submissions", roles: fieldWorkersAndUp, section: "Collection" },
   { href: "/collection", label: "Master Collection", roles: ["super_admin", "account_admin", "team_lead"], section: "Collection" },
   { href: "/validity", label: "Validity Records", roles: ["super_admin", "account_admin"], section: "Collection" },
   { href: "/imports", label: "Imports", roles: ["super_admin", "account_admin"], section: "Collection", matchPrefix: true },
   { href: "/directory", label: "Employee Directory", roles: ["super_admin", "account_admin"], section: "People" },
-  { href: "/ledger", label: "Ledger", roles: fieldAndUp, section: "Payroll", matchPrefix: true },
-  { href: "/payroll", label: "Payroll & Expenses", roles: fieldAndUp, section: "Payroll", matchPrefix: true },
-  { href: "/brex", label: "Brex", roles: fieldAndUp, section: "Payroll", matchPrefix: true },
-  { href: "/loans", label: "Loans & Advances", roles: fieldAndUp, section: "Payroll", matchPrefix: true },
+  { href: "/ledger", label: "Ledger", roles: moneyRoles, section: "Payroll", matchPrefix: true },
+  { href: "/payroll", label: "Payroll & Expenses", roles: moneyRoles, section: "Payroll", matchPrefix: true },
+  { href: "/brex", label: "Brex", roles: moneyRoles, section: "Payroll", matchPrefix: true },
+  { href: "/loans", label: "Loans & Advances", roles: moneyRoles, section: "Payroll", matchPrefix: true },
   { href: "/admin", label: "Admin Panel", roles: ["super_admin", "account_admin"], section: "Configuration", matchPrefix: true },
 ];
 
 const deepLinkAccess: { href: string; roles: UserRole[]; matchPrefix?: boolean }[] = [
   {
     href: "/payments",
-    roles: fieldAndUp,
+    roles: moneyRoles,
     matchPrefix: true,
   },
   { href: "/pay-rates", roles: ["super_admin", "account_admin"] },
@@ -44,6 +51,7 @@ const deepLinkAccess: { href: string; roles: UserRole[]; matchPrefix?: boolean }
   { href: "/colorado-import", roles: ["super_admin", "account_admin"] },
   { href: "/validity", roles: ["super_admin", "account_admin"] },
   { href: "/brex/contractor-payouts", roles: ["super_admin", "account_admin"] },
+  { href: "/clock", roles: ["super_admin", "account_admin"], matchPrefix: true },
 ];
 
 export function getNavForRole(role: UserRole) {
@@ -84,6 +92,21 @@ export function canAccess(role: UserRole, pathname: string) {
   if (pathname === "/phase2" || pathname.startsWith("/phase2/")) {
     return false;
   }
+  if (
+    role === "team_lead" &&
+    (pathname === "/ledger" ||
+      pathname.startsWith("/ledger/") ||
+      pathname === "/payroll" ||
+      pathname.startsWith("/payroll/") ||
+      pathname === "/brex" ||
+      pathname.startsWith("/brex/") ||
+      pathname === "/loans" ||
+      pathname.startsWith("/loans/") ||
+      pathname === "/payments" ||
+      pathname.startsWith("/payments/"))
+  ) {
+    return false;
+  }
   if (pathname === "/reports" || pathname.startsWith("/reports")) {
     return role === "super_admin" || role === "account_admin" || role === "team_lead";
   }
@@ -108,7 +131,6 @@ export function canAccessPayments(role: UserRole) {
   return (
     role === "super_admin" ||
     role === "account_admin" ||
-    role === "team_lead" ||
     role === "petitioner" ||
     role === "canvasser"
   );

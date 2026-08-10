@@ -3,7 +3,7 @@ export type LaterFeatureId =
   | "housing_room_moves"
   | "issues_spreadsheet_import"
   | "co_validity_drop_watcher"
-  | "clock_in_out";
+  | "per_door_knock_pay";
 
 export type LaterFeatureSpec = {
   id: LaterFeatureId;
@@ -14,6 +14,18 @@ export type LaterFeatureSpec = {
 };
 
 export const laterPhase2Features: LaterFeatureSpec[] = [
+  {
+    id: "per_door_knock_pay",
+    title: "Pay per door knock",
+    summary:
+      "Issue pay model for door-knock campaigns: rate × confirmed doors from validity/confirmation import, with no validity-percent benchmark.",
+    dropletSafeNow: false,
+    dependsOn: [
+      "pay_model enum per_door_knock",
+      "confirmation import columns",
+      "ledger recalculation for door units",
+    ],
+  },
   {
     id: "lotus_firm_ledger",
     title: "Lotus firm ledger",
@@ -42,26 +54,19 @@ export const laterPhase2Features: LaterFeatureSpec[] = [
     dropletSafeNow: false,
     dependsOn: ["storage watcher host", "parser fixtures"],
   },
-  {
-    id: "clock_in_out",
-    title: "Clock in / out",
-    summary: "Web time tracking for field staff (no GPS in Phase 2 scope).",
-    dropletSafeNow: false,
-    dependsOn: ["time entry schema", "team lead visibility rules"],
-  },
 ];
 
 export function laterFeaturesStatusPayload() {
   return {
     features: laterPhase2Features,
     status: "specified_deferred",
-    note: "Specs only — shown on /phase2. No Phase 1 droplet migrations for these until approved.",
+    note: "Next pay wave: per_door_knock. Clock in/out with GPS shipped separately. No chat/MFA login in this wave.",
     buildOrderHint: [
+      "per_door_knock_pay",
       "lotus_firm_ledger",
       "housing_room_moves",
       "issues_spreadsheet_import",
       "co_validity_drop_watcher",
-      "clock_in_out",
     ] as LaterFeatureId[],
   };
 }

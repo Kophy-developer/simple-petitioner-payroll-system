@@ -6,6 +6,7 @@ import { LogOut, Menu, User, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/layout/logo";
 import { OffboardFab } from "@/components/layout/offboard-fab";
+import { ClockPrompt } from "@/components/clock/clock-prompt";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { useDemoSession } from "@/lib/demo-session";
@@ -190,6 +191,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       <OffboardFab />
+      <ClockPrompt />
     </div>
   );
 }
