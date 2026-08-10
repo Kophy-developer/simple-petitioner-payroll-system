@@ -8,10 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useDemoSession } from "@/lib/demo-session";
-import { canEditFinancialConfig, canAccessPhase2Console } from "@/lib/access";
+import { canEditFinancialConfig } from "@/lib/access";
 import { roleLabel } from "@/lib/navigation";
-import { roleRequiresMfa } from "@/lib/phase2/mfa";
-import { SupabaseTotpEnrollPanel } from "@/components/phase2/supabase-totp-enroll-panel";
 
 export default function ProfilePage() {
   const { user, updateUser } = useDemoSession();
@@ -22,7 +20,6 @@ export default function ProfilePage() {
   if (!user) return null;
 
   const editableWage = canEditFinancialConfig(user.role);
-  const showMfa = roleRequiresMfa(user.role) || canAccessPhase2Console(user.role);
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -119,18 +116,6 @@ export default function ProfilePage() {
           </CardBody>
         </Card>
       </form>
-      {showMfa ? (
-        <Card>
-          <CardBody className="space-y-3">
-            <h2 className="font-display text-xl text-ink">Authenticator 2FA</h2>
-            <p className="text-sm text-ink/55">
-              Supabase TOTP for admin login and Brex payout step-up. Server AAL enforcement is deferred
-              until Phase 1 testing sign-off.
-            </p>
-            <SupabaseTotpEnrollPanel allowed={roleRequiresMfa(user.role)} purpose="login" />
-          </CardBody>
-        </Card>
-      ) : null}
     </div>
   );
 }

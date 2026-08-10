@@ -20,10 +20,10 @@ type EnrollPayload = {
 
 export function SupabaseTotpEnrollPanel({
   allowed,
-  purpose = "login",
+  purpose = "brex_payment",
 }: {
   allowed: boolean;
-  purpose?: "login" | "brex_payment";
+  purpose?: "brex_payment";
 }) {
   const [factors, setFactors] = useState<Factor[]>([]);
   const [enroll, setEnroll] = useState<EnrollPayload | null>(null);
@@ -60,10 +60,7 @@ export function SupabaseTotpEnrollPanel({
       const supabase = createClient();
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: "totp",
-        friendlyName:
-          purpose === "brex_payment"
-            ? "Ballot Access Pros — payouts"
-            : "Ballot Access Pros Authenticator",
+        friendlyName: "Ballot Access Pros — payouts",
       });
       if (error) {
         setMessage(error.message);
@@ -130,9 +127,7 @@ export function SupabaseTotpEnrollPanel({
         return;
       }
       setMessage(
-        purpose === "brex_payment"
-          ? "Step-up verified for payouts (AAL2). Live ACH remains off until Phase 1 sign-off."
-          : "Step-up verified (AAL2).",
+        "Step-up verified for payouts (AAL2). Live ACH remains off until you enable it.",
       );
       setCode("");
       await refresh();

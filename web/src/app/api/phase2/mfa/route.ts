@@ -20,13 +20,14 @@ export async function GET() {
   return NextResponse.json({
     ...mfaStatusPayload(),
     viewerRequiresMfa: requires,
+    viewerRequiresLoginMfa: false,
     enroll: {
       available: true,
-      ui: "/profile",
+      ui: "/brex/contractor-payouts",
       adminConsole: "/phase2",
       payouts: "/brex/contractor-payouts",
       message:
-        "Use Supabase Auth MFA TOTP (authenticator app). Enroll on Profile; practice payout step-up on contractor payouts. Droplet AAL enforcement remains deferred while Phase 1 testing continues.",
+        "Login 2FA is off. Authenticator enroll/step-up is only for Brex contractor payouts testing. Droplet AAL stays off.",
     },
   });
 }

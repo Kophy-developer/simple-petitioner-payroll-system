@@ -6,8 +6,6 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { SupabaseTotpEnrollPanel } from "@/components/phase2/supabase-totp-enroll-panel";
-import { createClient } from "@/lib/supabase/client";
 import { teamLeadScopeNote, teamLeadManageableRoles } from "@/lib/access";
 import { roleLabel } from "@/lib/navigation";
 
@@ -32,7 +30,6 @@ type StatusPayload = {
 export default function Phase2AdminPage() {
   const [data, setData] = useState<StatusPayload | null>(null);
   const [error, setError] = useState("");
-  const [mfaAllowed, setMfaAllowed] = useState(false);
   const [brexSim, setBrexSim] = useState("");
   const [agoraSim, setAgoraSim] = useState("");
 
@@ -44,20 +41,6 @@ export default function Phase2AdminPage() {
         setData(payload);
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Failed"));
-
-    void (async () => {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
-      setMfaAllowed(profile?.role === "super_admin" || profile?.role === "account_admin");
-    })();
   }, []);
 
   async function runBrexDryRun() {
@@ -114,13 +97,15 @@ export default function Phase2AdminPage() {
         </Card>
         <Card>
           <CardBody className="space-y-3">
-            <h2 className="font-display text-xl text-ink">Authenticator 2FA (Supabase TOTP)</h2>
+            <h2 className="font-display text-xl text-ink">Authenticator 2FA</h2>
             <p className="text-sm text-ink/70">{data?.mfa?.status ?? "…"}</p>
             <p className="text-sm text-ink/55">{data?.mfa?.note}</p>
-            <Link href="/profile" className="text-sm text-civic-navy underline">
-              Open Profile enroll UI
+            <p className="text-sm text-ink/55">Login 2FA is off. Practice enroll only on contractor payouts.</p>
+            <Link href="/brex/contractor-payouts">
+              <Button type="button" size="sm" variant="secondary">
+                Open payout MFA practice
+              </Button>
             </Link>
-            <SupabaseTotpEnrollPanel allowed={mfaAllowed} />
           </CardBody>
         </Card>
         <Card>
