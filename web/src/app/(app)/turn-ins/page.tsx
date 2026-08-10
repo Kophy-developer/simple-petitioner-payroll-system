@@ -521,23 +521,42 @@ export default function TurnInsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Petition columns on this turn-in</Label>
-                <div className="grid max-h-56 gap-2 overflow-y-auto sm:grid-cols-2">
-                  {lines.map((line) => (
-                    <label
-                      key={line.id}
-                      className="flex items-center justify-between rounded-xl border border-ink/10 px-3 py-2 text-sm"
+                {lines.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-ink/15 bg-ink/[0.02] px-4 py-3 text-sm text-ink/60">
+                    <p>No petition columns yet. Create at least one before this turn-in can be saved.</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="mt-2"
+                      onClick={() => {
+                        setOpen(false);
+                        resetLineForm();
+                        setLineOpen(true);
+                      }}
                     >
-                      <span>
-                        {line.code} · ${line.pay.toFixed(2)}
-                      </span>
-                      <input
-                        type="checkbox"
-                        checked={selectedLines.includes(line.id)}
-                        onChange={() => toggleLine(line.id)}
-                      />
-                    </label>
-                  ))}
-                </div>
+                      Add petition column
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid max-h-56 gap-2 overflow-y-auto sm:grid-cols-2">
+                    {lines.map((line) => (
+                      <label
+                        key={line.id}
+                        className="flex items-center justify-between rounded-xl border border-ink/10 px-3 py-2 text-sm"
+                      >
+                        <span>
+                          {line.code} · ${line.pay.toFixed(2)}
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={selectedLines.includes(line.id)}
+                          onChange={() => toggleLine(line.id)}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
               <Button type="submit" className="w-full" disabled={saving || !selectedLines.length || !turnInNumber}>
                 {saving ? "Creating…" : "Create turn-in"}
