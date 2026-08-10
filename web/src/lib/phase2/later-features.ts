@@ -55,6 +55,13 @@ export function laterFeaturesStatusPayload() {
   return {
     features: laterPhase2Features,
     status: "specified_deferred",
-    note: "Specs only. No Phase 1 droplet migrations for these until approved.",
+    note: "Specs only — shown on /phase2. No Phase 1 droplet migrations for these until approved.",
+    buildOrderHint: [
+      "lotus_firm_ledger",
+      "housing_room_moves",
+      "issues_spreadsheet_import",
+      "co_validity_drop_watcher",
+      "clock_in_out",
+    ] as LaterFeatureId[],
   };
 }

@@ -63,7 +63,7 @@ export function FieldOpsPanel() {
   const [oneWayFee, setOneWayFee] = useState("");
 
   const fieldPeople = useMemo(
-    () => people.filter((p) => ["petitioner", "team_lead"].includes(p.role)),
+    () => people.filter((p) => ["petitioner", "canvasser", "team_lead"].includes(p.role)),
     [people],
   );
 

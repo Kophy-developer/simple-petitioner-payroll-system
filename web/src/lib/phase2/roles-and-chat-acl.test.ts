@@ -19,4 +19,9 @@ assert.equal(canPostInChannel("petitioner", "announcement").allowed, false);
 assert.equal(canPostInChannel("account_admin", "announcement").allowed, true);
 assert.equal(canReactInChannel("petitioner", "announcement").allowed, true);
 
+assert.equal(canMessageRole("team_lead", "validator").allowed, false);
+assert.equal(canMessageRole("canvasser", "petitioner").allowed, true);
+assert.equal(canPostInChannel("team_lead", "team").allowed, true);
+assert.equal(canPostInChannel("team_lead", "announcement").allowed, false);
+
 console.log("phase2 roles-and-chat-acl tests passed");

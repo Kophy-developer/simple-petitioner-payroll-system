@@ -16,12 +16,17 @@ export async function GET() {
     .maybeSingle();
 
   const role = (profile?.role ?? "petitioner") as Parameters<typeof roleRequiresMfa>[0];
+  const requires = roleRequiresMfa(role);
   return NextResponse.json({
     ...mfaStatusPayload(),
-    viewerRequiresMfa: roleRequiresMfa(role),
+    viewerRequiresMfa: requires,
     enroll: {
-      available: false,
-      message: "Authenticator enrollment UI is scaffolded; server MFA is deferred until Phase 1 testing sign-off.",
+      available: true,
+      ui: "/profile",
+      adminConsole: "/phase2",
+      payouts: "/brex/contractor-payouts",
+      message:
+        "Use Supabase Auth MFA TOTP (authenticator app). Enroll on Profile; practice payout step-up on contractor payouts. Droplet AAL enforcement remains deferred while Phase 1 testing continues.",
     },
   });
 }
@@ -29,7 +34,9 @@ export async function GET() {
 export async function POST() {
   return NextResponse.json(
     {
-      error: "MFA enrollment is deferred. Droplet MFA must not be enabled while Phase 1 testing continues.",
+      error:
+        "Enroll via the browser Supabase MFA client (TOTP). Server-side force-enroll and AAL gates stay deferred on the droplet.",
+      provider: "supabase_totp",
     },
     { status: 503 },
   );

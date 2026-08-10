@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const publicPaths = ["/login", "/forgot-password", "/auth/callback"];
+const publicPaths = ["/login", "/forgot-password", "/auth/callback", "/agora-sim.html"];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({

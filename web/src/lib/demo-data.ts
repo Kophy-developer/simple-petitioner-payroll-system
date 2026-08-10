@@ -18,7 +18,7 @@ export const demoPassword = "demo1234";
 export const demoUsers: DemoUser[] = [
   { id: "u-super", email: "alex@ballotaccesspros.com", firstName: "Alex", lastName: "Whitfield", initials: "AW", role: "super_admin", status: "active", profileTags: ["leadership"], roleCategoryIds: ["rc-mgmt"] },
   { id: "u-admin", email: "morgan@ballotaccesspros.com", firstName: "Morgan", lastName: "Ellis", initials: "ME", role: "account_admin", status: "active", profileTags: ["ops"], roleCategoryIds: ["rc-mgmt"], wageCurrency: "USD", hourlyWage: 22 },
-  { id: "u-lead", email: "sam@ballotaccesspros.com", firstName: "Sam", lastName: "Rivera", initials: "SR", role: "team_lead", status: "active", profileTags: ["field-lead"], roleCategoryIds: ["rc-co"], teamMemberIds: ["u-pet-1", "u-pet-3"] },
+  { id: "u-lead", email: "sam@ballotaccesspros.com", firstName: "Sam", lastName: "Rivera", initials: "SR", role: "team_lead", status: "active", profileTags: ["field-lead"], roleCategoryIds: ["rc-co"], teamMemberIds: ["u-pet-1", "u-pet-3", "u-canv"] },
   { id: "u-pet-1", email: "jordan@ballotaccesspros.com", firstName: "Jordan", lastName: "Reed", initials: "JR", role: "petitioner", status: "active", profileTags: ["colorado"], roleCategoryIds: ["rc-co"] },
   { id: "u-canv", email: "casey@ballotaccesspros.com", firstName: "Casey", lastName: "Nguyen", initials: "CN", role: "canvasser", status: "active", profileTags: ["nevada"], roleCategoryIds: ["rc-nv"] },
   { id: "u-val", email: "riley@ballotaccesspros.com", firstName: "Riley", lastName: "Santos", initials: "RS", role: "validator", status: "active", profileTags: ["audit"], roleCategoryIds: ["rc-audit"] },

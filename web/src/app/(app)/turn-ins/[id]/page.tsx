@@ -48,7 +48,7 @@ export default function TurnInDetailPage() {
       setEntries(ents);
       setPeople(
         profiles.filter((p) =>
-          ["petitioner", "team_lead"].includes(p.role),
+          ["petitioner", "canvasser", "team_lead"].includes(p.role),
         ),
       );
       const next: Record<string, { sigs: string; books: string }> = {};

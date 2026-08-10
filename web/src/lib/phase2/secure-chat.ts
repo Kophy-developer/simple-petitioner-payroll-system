@@ -18,14 +18,19 @@ export const secureChatArchitecture = {
   },
   clientSurfaces: ["/messages", "/messages/announcements"],
   aclModule: "@/lib/phase2/roles-and-chat-acl",
+  avCalls: {
+    provider: "agora",
+    labRoute: "/phase2/agora-lab",
+    tokenRoute: "/api/phase2/agora/token",
+  },
   deferredInfra: [
     "Chat API host",
     "E2E key exchange",
     "Object storage for attachments",
-    "WebRTC / SFU for A/V",
+    "Agora channel orchestration wired into chat rooms",
     "Push notifications",
   ],
-  note: "Architecture scaffolding only. No chat tables on the Phase 1 droplet until explicitly approved.",
+  note: "Architecture scaffolding only. Agora credentials can mint RTC tokens now; chat tables stay off the Phase 1 droplet until explicitly approved.",
 } as const;
 
 export function secureChatStatusPayload() {

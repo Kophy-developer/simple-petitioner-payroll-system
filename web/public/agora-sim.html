@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Agora join sim</title>
+    <script src="https://download.agora.io/sdk/release/AgoraRTC_N.js"></script>
+  </head>
+  <body>
+    <pre id="out">starting…</pre>
+    <script>
+      (async () => {
+        const out = document.getElementById("out");
+        const log = (v) => {
+          out.textContent = typeof v === "string" ? v : JSON.stringify(v, null, 2);
+        };
+        try {
+          const channel = "bap-public-sim";
+          const uid = 5151;
+          const res = await fetch(
+            `/api/phase2/agora/token?channel=${encodeURIComponent(channel)}&uid=${uid}&role=publisher`,
+          );
+          const payload = await res.json();
+          if (!res.ok) throw new Error(payload.error || "token failed");
+          const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+          await client.join(payload.appId, payload.channelName, payload.token, uid);
+          const mic = await AgoraRTC.createMicrophoneAudioTrack();
+          const cam = await AgoraRTC.createCameraVideoTrack();
+          await client.publish([mic, cam]);
+          const published = client.localTracks.map((t) => t.trackMediaType);
+          await client.unpublish([mic, cam]);
+          mic.close();
+          cam.close();
+          await client.leave();
+          log({
+            ok: true,
+            joined: true,
+            published,
+            channelName: payload.channelName,
+            uid,
+          });
+          document.title = "AGORA_OK";
+        } catch (e) {
+          log({ ok: false, error: e && e.message ? e.message : String(e) });
+          document.title = "AGORA_FAIL";
+        }
+      })();
+    </script>
+  </body>
+</html>

@@ -4,6 +4,7 @@ import { secureChatStatusPayload } from "@/lib/phase2/secure-chat";
 import { laterFeaturesStatusPayload } from "@/lib/phase2/later-features";
 import { chatAclMatrixSummary } from "@/lib/phase2/roles-and-chat-acl";
 import { mailEnvStatus } from "@/lib/email-templates";
+import { agoraStatusPayload } from "@/lib/phase2/agora";
 
 export function phase2StatusPayload() {
   return {
@@ -17,6 +18,7 @@ export function phase2StatusPayload() {
     mfa: mfaStatusPayload(),
     rolesAndChatAcl: chatAclMatrixSummary,
     brexContractors: contractorPayoutStatusPayload(),
+    agora: agoraStatusPayload(),
     secureChat: secureChatStatusPayload(),
     laterFeatures: laterFeaturesStatusPayload(),
   };

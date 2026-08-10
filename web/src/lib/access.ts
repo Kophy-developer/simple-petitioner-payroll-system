@@ -1,4 +1,5 @@
 import type { UserRole } from "./types";
+import { canLeadRole, rolesTeamLeadMayManage } from "@/lib/phase2/roles-and-chat-acl";
 
 export function canViewAllLedgers(role: UserRole) {
   return role === "super_admin" || role === "account_admin";
@@ -6,6 +7,19 @@ export function canViewAllLedgers(role: UserRole) {
 
 export function canViewTeamData(role: UserRole) {
   return role === "team_lead";
+}
+
+export function teamLeadManageableRoles() {
+  return rolesTeamLeadMayManage();
+}
+
+export function teamLeadCanManageMember(leadRole: UserRole, memberRole: UserRole) {
+  if (leadRole !== "team_lead") return false;
+  return canLeadRole(memberRole);
+}
+
+export function teamLeadScopeNote() {
+  return "Team leads may oversee petitioners, canvassers, or both. Field worker roles share the same Phase 2 messaging and payroll field rules until Phase 3.";
 }
 
 export function canEditFinancialConfig(role: UserRole) {
